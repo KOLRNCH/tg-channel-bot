@@ -7,8 +7,9 @@
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <link rel="stylesheet" href="./styles.css" />
 </head>
-<body class="bg-monochrome-chrome card-dark">
+<body class="bg-cyber-void card-dark">
   <div class="ambient-bg" aria-hidden="true">
+    <div class="dither-grid"></div>
     <span class="orb orb-1"></span>
     <span class="orb orb-2"></span>
   </div>
@@ -16,44 +17,47 @@
   <main class="stage">
     <section class="card-wrapper" id="cardWrapper">
       <article class="channel-card" id="channelCard">
+        <span class="hud-corner hud-tl" aria-hidden="true"></span>
+        <span class="hud-corner hud-tr" aria-hidden="true"></span>
+
         <div class="cover-box" id="coverBox">
-          <div class="chrome-hero" id="chromeHero" aria-hidden="true">
+          <canvas class="dither-canvas" id="ditherCanvas" width="188" height="96" aria-hidden="true"></canvas>
+
+          <div class="chrome-hero" id="chromeHero" hidden aria-hidden="true">
             <svg class="chrome-waves" viewBox="0 0 440 160" preserveAspectRatio="none">
               <defs>
                 <linearGradient id="metalA" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stop-color="#0b0c10" />
-                  <stop offset="22%" stop-color="#525866" />
-                  <stop offset="44%" stop-color="#f8fafc" />
-                  <stop offset="56%" stop-color="#1e222b" />
-                  <stop offset="78%" stop-color="#cbd5e1" />
-                  <stop offset="100%" stop-color="#090a0d" />
+                  <stop offset="0%" stop-color="#070709" />
+                  <stop offset="28%" stop-color="#3f4450" />
+                  <stop offset="48%" stop-color="#f8fafc" />
+                  <stop offset="62%" stop-color="#17191f" />
+                  <stop offset="85%" stop-color="#94a3b8" />
+                  <stop offset="100%" stop-color="#070709" />
                 </linearGradient>
                 <linearGradient id="metalB" x1="100%" y1="0%" x2="0%" y2="100%">
-                  <stop offset="0%" stop-color="#ffffff" stop-opacity="0.92" />
-                  <stop offset="30%" stop-color="#64748b" stop-opacity="0.55" />
-                  <stop offset="58%" stop-color="#0f1117" stop-opacity="0.9" />
-                  <stop offset="82%" stop-color="#e2e8f0" stop-opacity="0.85" />
-                  <stop offset="100%" stop-color="#181b22" stop-opacity="0.4" />
-                </linearGradient>
-                <linearGradient id="rimGlow" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stop-color="#ffffff" stop-opacity="0.1" />
-                  <stop offset="50%" stop-color="#ffffff" stop-opacity="0.95" />
-                  <stop offset="100%" stop-color="#ffffff" stop-opacity="0.1" />
+                  <stop offset="0%" stop-color="#ffffff" stop-opacity="0.9" />
+                  <stop offset="35%" stop-color="#525866" stop-opacity="0.5" />
+                  <stop offset="65%" stop-color="#0a0b0e" stop-opacity="0.92" />
+                  <stop offset="100%" stop-color="#e2e8f0" stop-opacity="0.7" />
                 </linearGradient>
               </defs>
-              <rect width="440" height="160" fill="#090a0e" />
+              <rect width="440" height="160" fill="#07070a" />
               <path class="wave-layer wave-1" d="M-20,115 C60,35 150,155 245,75 C325,10 390,120 465,55 L465,175 L-20,175 Z" fill="url(#metalA)" />
               <path class="wave-layer wave-2" d="M-20,92 C75,148 165,18 270,88 C345,138 405,36 465,80 L465,175 L-20,175 Z" fill="url(#metalB)" opacity="0.88" />
-              <path class="wave-layer wave-3" d="M-20,124 C95,62 190,145 295,62 C365,8 415,96 465,48" fill="none" stroke="url(#rimGlow)" stroke-width="2.2" />
             </svg>
             <div class="chrome-hero__sheen"></div>
-            <div class="chrome-hero__badge" id="coverBadge">OFFICIAL HUB</div>
           </div>
+
           <img id="coverImg" alt="Обложка канала" hidden />
-          <div class="cover-gloss"></div>
+          <div class="cover-scanlines" aria-hidden="true"></div>
+          <div class="chrome-hero__badge" id="coverBadge">HUB // ONLINE</div>
         </div>
 
         <div class="card-content" id="cardContent">
+          <div class="hud-meta-row" aria-hidden="true">
+            <span class="hud-tag">SYS // CH_ACCESS</span>
+            <span class="hud-dots">:::</span>
+          </div>
           <h1 class="brand-title" id="brandTitle">Добро пожаловать!</h1>
           <p class="brand-subtitle" id="brandSubtitle"></p>
 
@@ -65,7 +69,7 @@
     </section>
 
     <footer class="miniapp-footer" id="previewBar" hidden>
-      <span>Режим предпросмотра</span>
+      <span>PREVIEW_MODE</span>
       <a href="./editor.html" class="footer-link">Открыть конструктор</a>
     </footer>
   </main>

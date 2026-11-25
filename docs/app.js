@@ -1,8 +1,8 @@
 /**
  * Telegram Mini App controller:
- * - Zero-image procedural chrome header & crisp inline SVG platform icons
- * - Monochrome chrome buttons with platform accent glow + water-drop concentric ripples
- * - Loads config from ./config.json (or live preview override from editor.html)
+ * - Procedural 3D Bayer-dithered rotating cyber-star canvas (inspired by cyber-sigil/CRT dither)
+ * - Pure-code monochrome liquid chrome buttons with platform accent glow + water-drop ripples
+ * - Config driven by ./config.json (or live preview override from editor.html)
  */
 
 const STORAGE_PREVIEW_KEY = "tg_miniapp_preview_config_v1";
@@ -30,21 +30,245 @@ function buildStarburstPolygon(points = 24, outerRadius = 50, innerRadius = 41) 
 
 document.documentElement.style.setProperty("--starburst-clip", buildStarburstPolygon());
 
+/**
+ * Procedural 3D Bayer-dithered rotating 4-point cyber star renderer.
+ * Low internal pixel buffer (188x96) upscaled with crisp pixelated edges for fast 60fps.
+ */
+function createDitherStarRenderer(canvas) {
+  const ctx = canvas.getContext("2d", { alpha: false });
+  const W = canvas.width;
+  const H = canvas.height;
+  const img = ctx.createImageData(W, H);
+  const data = img.data;
+  const zBuf = new Float32Array(W * H);
+  const shadeBuf = new Float32Array(W * H);
+
+  // 4x4 Bayer matrix normalized to [0..1)
+  const BAYER = [
+    0 / 16, 8 / 16, 2 / 16, 10 / 16,
+    12 / 16, 4 / 16, 14 / 16, 6 / 16,
+    3 / 16, 11 / 16, 1 / 16, 9 / 16,
+    15 / 16, 7 / 16, 13 / 16, 5 / 16
+  ];
+
+  // 3D beveled 4-point cyber star vertices
+  const VERTS = [
+    [0, -1.28, 0],     // 0: top tip
+    [0.24, -0.26, 0],  // 1: top-right waist
+    [0.95, 0.04, 0],   // 2: right tip
+    [0.22, 0.28, 0],   // 3: bottom-right waist
+    [0, 1.28, 0],      // 4: bottom tip
+    [-0.22, 0.28, 0],  // 5: bottom-left waist
+    [-0.95, 0.04, 0],  // 6: left tip
+    [-0.24, -0.26, 0], // 7: top-left waist
+    [0, 0, 0.27],      // 8: front apex
+    [0, 0, -0.27]      // 9: back apex
+  ];
+
+  const TRIS = [];
+  for (let i = 0; i < 8; i++) {
+    const next = (i + 1) % 8;
+    TRIS.push([8, i, next]);
+    TRIS.push([9, next, i]);
+  }
+
+  let rafId = 0;
+  let running = false;
+  let glitchBoost = 0;
+  let startTime = performance.now();
+  const reducedMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  canvas.addEventListener("pointerdown", () => {
+    glitchBoost = 1.0;
+  });
+
+  function renderFrame(now) {
+    const t = (now - startTime) * 0.001;
+    const rotY = reducedMotion ? 0.45 : t * 1.15;
+    const rotX = Math.sin(t * 0.7) * 0.22;
+    const rotZ = -0.24 + Math.cos(t * 0.5) * 0.08;
+
+    const cy = Math.cos(rotY), sy = Math.sin(rotY);
+    const cx = Math.cos(rotX), sx = Math.sin(rotX);
+    const cz = Math.cos(rotZ), sz = Math.sin(rotZ);
+
+    const proj = new Array(VERTS.length);
+    for (let i = 0; i < VERTS.length; i++) {
+      let [x, y, z] = VERTS[i];
+      // Rotate Y
+      const x1 = x * cy + z * sy;
+      const z1 = -x * sy + z * cy;
+      // Rotate X
+      const y2 = y * cx - z1 * sx;
+      const z2 = y * sx + z1 * cx;
+      // Rotate Z
+      const x3 = x1 * cz - y2 * sz;
+      const y3 = x1 * sz + y2 * cz;
+
+      const depth = 3.2 - z2;
+      const scale = 112 / depth;
+      proj[i] = [W * 0.5 + x3 * scale, H * 0.5 + y3 * scale, z2, x3, y3];
+    }
+
+    zBuf.fill(-1e9);
+    shadeBuf.fill(-1);
+
+    // Light direction (top-left bright chrome highlight + rim)
+    const lx = -0.5, ly = -0.58, lz = 0.64;
+
+    for (let tIdx = 0; tIdx < TRIS.length; tIdx++) {
+      const [ia, ib, ic] = TRIS[tIdx];
+      const a = proj[ia], b = proj[ib], c = proj[ic];
+
+      // Screen-space signed area
+      const area = (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
+      if (area <= 0) continue;
+
+      // 3D face normal
+      const ux = b[3] - a[3], uy = b[4] - a[4], uz = b[2] - a[2];
+      const vx = c[3] - a[3], vy = c[4] - a[4], vz = c[2] - a[2];
+      let nx = uy * vz - uz * vy;
+      let ny = uz * vx - ux * vz;
+      let nz = ux * vy - uy * vx;
+      const nLen = Math.hypot(nx, ny, nz) || 1;
+      nx /= nLen; ny /= nLen; nz /= nLen;
+
+      const diff = Math.max(0, nx * lx + ny * ly + nz * lz);
+      const spec = Math.pow(Math.max(0, nz), 3.2);
+      const rim = Math.pow(1 - Math.abs(nz), 1.7) * 0.55;
+      const shade = Math.min(1, 0.18 + diff * 0.68 + spec * 0.52 + rim);
+
+      const minX = Math.max(0, Math.floor(Math.min(a[0], b[0], c[0])));
+      const maxX = Math.min(W - 1, Math.ceil(Math.max(a[0], b[0], c[0])));
+      const minY = Math.max(0, Math.floor(Math.min(a[1], b[1], c[1])));
+      const maxY = Math.min(H - 1, Math.ceil(Math.max(a[1], b[1], c[1])));
+
+      const invArea = 1 / area;
+      for (let py = minY; py <= maxY; py++) {
+        for (let px = minX; px <= maxX; px++) {
+          const w0 = ((b[0] - px) * (c[1] - py) - (b[1] - py) * (c[0] - px)) * invArea;
+          const w1 = ((c[0] - px) * (a[1] - py) - (c[1] - py) * (a[0] - px)) * invArea;
+          const w2 = 1 - w0 - w1;
+          if (w0 < 0 || w1 < 0 || w2 < 0) continue;
+
+          const z = w0 * a[2] + w1 * b[2] + w2 * c[2];
+          const idx = py * W + px;
+          if (z > zBuf[idx]) {
+            zBuf[idx] = z;
+            shadeBuf[idx] = shade;
+          }
+        }
+      }
+    }
+
+    // Periodic subtle slice-glitch burst (like frames 00:06-00:08 of reference)
+    const periodic = (!reducedMotion && (t % 4.2) > 3.92) ? 0.85 : 0;
+    const glitch = Math.max(periodic, glitchBoost);
+    glitchBoost = Math.max(0, glitchBoost - 0.06);
+
+    // Clear pixel buffer to deep void #070709
+    for (let y = 0; y < H; y++) {
+      const sliceShift = glitch > 0.1 && ((y >> 2) % 3 === 0)
+        ? Math.round(Math.sin(y * 0.4 + t * 40) * 7 * glitch)
+        : 0;
+
+      for (let x = 0; x < W; x++) {
+        const sx = x - sliceShift;
+        const outIdx = (y * W + x) * 4;
+
+        if (sx < 0 || sx >= W) {
+          data[outIdx] = 7;
+          data[outIdx + 1] = 7;
+          data[outIdx + 2] = 10;
+          data[outIdx + 3] = 255;
+          continue;
+        }
+
+        const shade = shadeBuf[y * W + sx];
+        const leftShade = sx > 0 ? shadeBuf[y * W + sx - 1] : -1;
+        const rightShade = sx < W - 1 ? shadeBuf[y * W + sx + 1] : -1;
+
+        const bayer = BAYER[((y & 3) << 2) | (x & 3)];
+
+        if (shade >= 0) {
+          // Bayer dither threshold across dark chrome -> crisp silver -> pure white
+          const lit = shade > bayer;
+          const bright = shade > bayer + 0.34;
+
+          if (bright) {
+            data[outIdx] = 244;
+            data[outIdx + 1] = 246;
+            data[outIdx + 2] = 252;
+          } else if (lit) {
+            // Subtle crimson-silver digital midtone highlight
+            data[outIdx] = 198;
+            data[outIdx + 1] = 148;
+            data[outIdx + 2] = 166;
+          } else {
+            data[outIdx] = 36;
+            data[outIdx + 1] = 24;
+            data[outIdx + 2] = 32;
+          }
+        } else if (leftShade >= 0 && bayer < 0.72) {
+          // Chromatic right edge bleed (crimson-pink)
+          data[outIdx] = 245;
+          data[outIdx + 1] = 45;
+          data[outIdx + 2] = 95;
+        } else if (rightShade >= 0 && bayer < 0.72) {
+          // Chromatic left edge bleed (violet-indigo)
+          data[outIdx] = 148;
+          data[outIdx + 1] = 72;
+          data[outIdx + 2] = 248;
+        } else {
+          // Subtle digital grid dots in the dark void
+          const bgDot = (x % 8 === 0 && y % 8 === 0) ? 20 : 7;
+          data[outIdx] = bgDot;
+          data[outIdx + 1] = bgDot;
+          data[outIdx + 2] = bgDot + 3;
+        }
+        data[outIdx + 3] = 255;
+      }
+    }
+
+    ctx.putImageData(img, 0, 0);
+    if (running && !reducedMotion) {
+      rafId = requestAnimationFrame(renderFrame);
+    }
+  }
+
+  return {
+    start() {
+      if (running) return;
+      running = true;
+      renderFrame(performance.now());
+    },
+    stop() {
+      running = false;
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = 0;
+    }
+  };
+}
+
+let starRenderer = null;
+
 function getTelegramWebApp() {
   return window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
 }
 
 function applyTheme(theme = {}) {
   const body = document.body;
-  body.classList.remove("bg-monochrome-chrome", "bg-telegram-blue", "bg-telegram-theme", "card-dark", "card-light");
+  body.classList.remove("bg-cyber-void", "bg-monochrome-chrome", "bg-telegram-blue", "bg-telegram-theme", "card-dark", "card-light");
 
-  const bgMode = theme.bgMode || "monochrome-chrome";
-  if (bgMode === "telegram-blue") {
+  const bgMode = theme.bgMode || "cyber-void";
+  if (bgMode === "monochrome-chrome") {
+    body.classList.add("bg-monochrome-chrome");
+  } else if (bgMode === "telegram-blue") {
     body.classList.add("bg-telegram-blue");
   } else if (bgMode === "telegram-theme") {
     body.classList.add("bg-telegram-theme");
   } else {
-    body.classList.add("bg-monochrome-chrome");
+    body.classList.add("bg-cyber-void");
   }
 
   body.classList.add(theme.cardTone === "light" ? "card-light" : "card-dark");
@@ -107,7 +331,7 @@ function renderButtonIcon(iconEl, iconValue) {
 
 function createStyledButton(btnConfig, fallbackCover) {
   const shape = btnConfig.shape === "starburst" ? "starburst" : "pill";
-  const variant = btnConfig.variant || "chrome-mono";
+  const variant = btnConfig.variant || "cyber-dither";
   const accent = btnConfig.accent || "silver";
 
   const btn = document.createElement("button");
@@ -158,7 +382,7 @@ function createStyledButton(btnConfig, fallbackCover) {
 
   const arrow = document.createElement("span");
   arrow.className = "fx-btn__arrow";
-  arrow.textContent = "→";
+  arrow.textContent = "->";
   btn.appendChild(arrow);
 
   const rippleLayer = document.createElement("span");
@@ -215,25 +439,42 @@ function renderApp(config) {
   applyTheme(config.theme);
 
   const coverBox = document.getElementById("coverBox");
+  const ditherCanvas = document.getElementById("ditherCanvas");
   const chromeHero = document.getElementById("chromeHero");
   const coverImg = document.getElementById("coverImg");
   const coverBadge = document.getElementById("coverBadge");
 
-  const mode = config.coverMode || (config.coverImage ? "image" : "chrome-code");
+  if (!starRenderer && ditherCanvas) {
+    starRenderer = createDitherStarRenderer(ditherCanvas);
+  }
+
+  const mode = config.coverMode || (config.coverImage ? "image" : "dither-star");
   if (mode === "none") {
     coverBox.hidden = true;
+    starRenderer?.stop();
   } else if (mode === "image" && config.coverImage) {
     coverBox.hidden = false;
+    ditherCanvas.hidden = true;
     chromeHero.hidden = true;
     coverImg.hidden = false;
     coverImg.src = config.coverImage;
-  } else {
+    starRenderer?.stop();
+  } else if (mode === "chrome-code") {
     coverBox.hidden = false;
+    ditherCanvas.hidden = true;
     chromeHero.hidden = false;
     coverImg.hidden = true;
-    coverBadge.hidden = !config.coverBadge;
-    coverBadge.textContent = config.coverBadge || "";
+    starRenderer?.stop();
+  } else {
+    coverBox.hidden = false;
+    ditherCanvas.hidden = false;
+    chromeHero.hidden = true;
+    coverImg.hidden = true;
+    starRenderer?.start();
   }
+
+  coverBadge.hidden = !config.coverBadge;
+  coverBadge.textContent = config.coverBadge || "";
 
   document.getElementById("brandTitle").textContent = config.brandTitle || "Добро пожаловать!";
   document.getElementById("brandSubtitle").textContent = config.subtitle || "";

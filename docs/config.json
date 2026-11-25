@@ -1,11 +1,11 @@
 {
   "brandTitle": "Добро пожаловать!",
-  "subtitle": "Стримы, свежие видео, чат комьюнити и личная предложка — без лишних загрузок.",
-  "coverMode": "chrome-code",
-  "coverBadge": "OFFICIAL HUB",
+  "subtitle": "Стримы, свежие видео, чат комьюнити и личная предложка — всё в одном цифровом хабе.",
+  "coverMode": "dither-star",
+  "coverBadge": "HUB // ONLINE",
   "coverImage": "",
   "theme": {
-    "bgMode": "monochrome-chrome",
+    "bgMode": "cyber-void",
     "cardTone": "dark"
   },
   "buttons": [
@@ -15,7 +15,7 @@
       "subtitle": "Видео, нарезки и гайды",
       "url": "https://www.youtube.com/@your_channel",
       "icon": "youtube",
-      "variant": "chrome-mono",
+      "variant": "cyber-dither",
       "accent": "youtube",
       "shape": "pill",
       "bgImage": ""
@@ -26,7 +26,7 @@
       "subtitle": "Прямые эфиры и общение",
       "url": "https://www.twitch.tv/your_channel",
       "icon": "twitch",
-      "variant": "chrome-mono",
+      "variant": "cyber-dither",
       "accent": "twitch",
       "shape": "pill",
       "bgImage": ""
@@ -37,7 +37,7 @@
       "subtitle": "Комьюнити и обсуждения",
       "url": "https://t.me/your_chat",
       "icon": "telegram",
-      "variant": "chrome-mono",
+      "variant": "cyber-dither",
       "accent": "telegram",
       "shape": "pill",
       "bgImage": ""
