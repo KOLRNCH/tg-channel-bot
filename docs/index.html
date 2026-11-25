@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Меню канала</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body class="bg-telegram-blue">
+  <div class="ambient-bg" aria-hidden="true">
+    <span class="orb orb-1"></span>
+    <span class="orb orb-2"></span>
+  </div>
+
+  <main class="stage">
+    <section class="card-wrapper" id="cardWrapper">
+      <article class="channel-card" id="channelCard">
+        <div class="cover-box" id="coverBox">
+          <img id="coverImg" src="./assets/cover.jpg" alt="Обложка канала" loading="eager" />
+          <div class="cover-gloss"></div>
+        </div>
+
+        <div class="card-content">
+          <h1 class="brand-title" id="brandTitle">Добро пожаловать!</h1>
+          <p class="brand-subtitle" id="brandSubtitle"></p>
+
+          <div class="buttons-stack" id="buttonsStack"></div>
+        </div>
+      </article>
+
+      <div class="starburst-dock" id="starburstDock"></div>
+    </section>
+
+    <footer class="miniapp-footer" id="previewBar" hidden>
+      <span>Режим предпросмотра</span>
+      <a href="./editor.html" class="footer-link">Открыть редактор</a>
+    </footer>
+  </main>
+
+  <script src="./app.js"></script>
+</body>
+</html>

@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Конструктор Mini App-визитки</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --panel-bg: #111827;
+      --surface: #1e293b;
+      --border: rgba(255, 255, 255, 0.12);
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
+      background: #090d16;
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    .layout {
+      max-width: 1220px;
+      margin: 0 auto;
+      padding: 20px;
+      display: grid;
+      grid-template-columns: minmax(340px, 1fr) 410px;
+      gap: 24px;
+      align-items: start;
+    }
+
+    @media (max-width: 920px) {
+      .layout { grid-template-columns: 1fr; }
+    }
+
+    .panel {
+      background: var(--panel-bg);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 20px;
+    }
+
+    h1 { margin: 0 0 6px; font-size: 22px; }
+    .lead { margin: 0 0 18px; color: var(--muted); font-size: 14px; line-height: 1.5; }
+    h2 { margin: 22px 0 10px; font-size: 16px; }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    label {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 12.5px;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+
+    input, textarea, select {
+      width: 100%;
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 9px 11px;
+      font: inherit;
+      font-size: 13.5px;
+    }
+
+    textarea { min-height: 76px; resize: vertical; }
+
+    .btn-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+
+    .btn-card-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      gap: 8px;
+    }
+
+    .btn-card-title { font-weight: 700; font-size: 14px; }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 10px;
+      padding: 9px 14px;
+      font: inherit;
+      font-size: 13.5px;
+      font-weight: 600;
+      cursor: pointer;
+      color: #fff;
+      background: #2563eb;
+    }
+
+    button.secondary { background: #334155; }
+    button.success { background: #059669; }
+    button.danger { background: #dc2626; padding: 6px 10px; font-size: 12px; }
+    button.small { padding: 6px 10px; font-size: 12px; }
+
+    .phone-frame {
+      position: sticky;
+      top: 18px;
+      background: #020617;
+      border-radius: 36px;
+      padding: 12px;
+      border: 2px solid rgba(255, 255, 255, 0.14);
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+    }
+
+    .phone-frame iframe {
+      width: 100%;
+      height: 700px;
+      border: 0;
+      border-radius: 26px;
+      display: block;
+      background: #0c63ff;
+    }
+
+    .toast {
+      margin-top: 10px;
+      font-size: 13px;
+      color: #4ade80;
+      min-height: 18px;
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <section class="panel">
+      <h1>🎨 Конструктор Mini App-визитки</h1>
+      <p class="lead">
+        Меняйте текст, обложку, форму и покрытие кнопок (хромовое переливание, фото под стеклом или угловую звёздочку).
+        Все изменения сразу видны в телефоне справа. Когда всё готово — скопируйте или скачайте <code>config.json</code> и замените файл <code>docs/config.json</code> на GitHub.
+      </p>
+
+      <div class="grid-2">
+        <label>
+          Заголовок
+          <input id="brandTitle" type="text" />
+        </label>
+        <label>
+          Картинка-обложка (URL или ./assets/cover.jpg)
+          <input id="coverImage" type="text" />
+        </label>
+      </div>
+
+      <label>
+        Текст приветствия
+        <textarea id="subtitle"></textarea>
+      </label>
+
+      <div class="grid-2">
+        <label>
+          Фон Mini App
+          <select id="bgMode">
+            <option value="telegram-blue">Фирменный синий Telegram</option>
+            <option value="telegram-dark">Тёмный неон</option>
+            <option value="telegram-theme">Авто-тема пользователя</option>
+          </select>
+        </label>
+        <label>
+          Стиль карточки
+          <select id="cardTone">
+            <option value="light">Белая карточка</option>
+            <option value="dark">Тёмная карточка</option>
+          </select>
+        </label>
+      </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; margin:18px 0 10px;">
+        <h2 style="margin:0;">Кнопки</h2>
+        <button id="addBtn" class="success" type="button">➕ Добавить кнопку</button>
+      </div>
+
+      <div id="buttonsEditor"></div>
+
+      <div class="actions" style="margin-top:16px;">
+        <button id="copyBtn" type="button">📋 Скопировать config.json</button>
+        <button id="downloadBtn" class="secondary" type="button">💾 Скачать config.json</button>
+        <button id="resetBtn" class="secondary" type="button">↺ Сбросить к текущему</button>
+      </div>
+      <div class="toast" id="toast"></div>
+    </section>
+
+    <aside class="phone-frame">
+      <iframe id="previewFrame" src="./index.html?preview=1" title="Живой предпросмотр Mini App"></iframe>
+    </aside>
+  </div>
+
+  <script>
+    const STORAGE_KEY = "tg_miniapp_preview_config_v1";
+    const VARIANTS = [
+      ["chrome-iridescent", "✨ Переливающийся хром"],
+      ["chrome-red", "🔴 Красный хром"],
+      ["chrome-blue", "🔵 Синий хром"],
+      ["chrome-green", "🟢 Зелёный хром"],
+      ["chrome-orange", "🟠 Оранжевый хром"],
+      ["photo-glass", "🖼 Фото + стекло"]
+    ];
+    const SHAPES = [
+      ["pill", "Обычная кнопка (капсула)"],
+      ["starburst", "⭐ Угловая звёздочка-стикер"]
+    ];
+
+    let state = null;
+    const frame = document.getElementById("previewFrame");
+    const toast = document.getElementById("toast");
+
+    function showToast(msg) {
+      toast.textContent = msg;
+      setTimeout(() => { if (toast.textContent === msg) toast.textContent = ""; }, 2600);
+    }
+
+    function syncPreview() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      if (frame.contentWindow) {
+        frame.contentWindow.postMessage({ type: "MINIAPP_CONFIG_UPDATE", config: state }, "*");
+      }
+    }
+
+    function renderEditor() {
+      document.getElementById("brandTitle").value = state.brandTitle || "";
+      document.getElementById("subtitle").value = state.subtitle || "";
+      document.getElementById("coverImage").value = state.coverImage || "";
+      document.getElementById("bgMode").value = state.theme?.bgMode || "telegram-blue";
+      document.getElementById("cardTone").value = state.theme?.cardTone || "light";
+
+      const container = document.getElementById("buttonsEditor");
+      container.innerHTML = "";
+
+      state.buttons.forEach((btn, idx) => {
+        const card = document.createElement("div");
+        card.className = "btn-card";
+
+        const variantOpts = VARIANTS.map(([val, lbl]) =>
+          `<option value="${val}" ${btn.variant === val ? "selected" : ""}>${lbl}</option>`
+        ).join("");
+        const shapeOpts = SHAPES.map(([val, lbl]) =>
+          `<option value="${val}" ${btn.shape === val ? "selected" : ""}>${lbl}</option>`
+        ).join("");
+
+        card.innerHTML = `
+          <div class="btn-card-head">
+            <span class="btn-card-title">#${idx + 1} ${btn.title || "Кнопка"}</span>
+            <div class="actions">
+              <button class="secondary small" data-move="-1" type="button">↑</button>
+              <button class="secondary small" data-move="1" type="button">↓</button>
+              <button class="danger" data-del="1" type="button">Удалить</button>
+            </div>
+          </div>
+          <div class="grid-2">
+            <label>Текст кнопки <input data-field="title" value="${(btn.title || "").replace(/"/g, "&quot;")}" /></label>
+            <label>Иконка (эмодзи) <input data-field="icon" value="${(btn.icon || "").replace(/"/g, "&quot;")}" /></label>
+          </div>
+          <div class="grid-2">
+            <label>Подпись <input data-field="subtitle" value="${(btn.subtitle || "").replace(/"/g, "&quot;")}" /></label>
+            <label>Ссылка (URL) <input data-field="url" value="${(btn.url || "").replace(/"/g, "&quot;")}" /></label>
+          </div>
+          <div class="grid-2">
+            <label>Покрытие / стиль <select data-field="variant">${variantOpts}</select></label>
+            <label>Форма <select data-field="shape">${shapeOpts}</select></label>
+          </div>
+          <label>Фото на фон (для стиля «Фото + стекло», URL)
+            <input data-field="bgImage" placeholder="https://... или ./assets/cover.jpg" value="${(btn.bgImage || "").replace(/"/g, "&quot;")}" />
+          </label>
+        `;
+
+        card.querySelectorAll("[data-field]").forEach((input) => {
+          input.addEventListener("input", () => {
+            btn[input.dataset.field] = input.value;
+            if (input.dataset.field === "title") {
+              card.querySelector(".btn-card-title").textContent = `#${idx + 1} ${btn.title || "Кнопка"}`;
+            }
+            syncPreview();
+          });
+        });
+
+        card.querySelectorAll("[data-move]").forEach((moveBtn) => {
+          moveBtn.addEventListener("click", () => {
+            const delta = Number(moveBtn.dataset.move);
+            const target = idx + delta;
+            if (target < 0 || target >= state.buttons.length) return;
+            [state.buttons[idx], state.buttons[target]] = [state.buttons[target], state.buttons[idx]];
+            renderEditor();
+            syncPreview();
+          });
+        });
+
+        card.querySelector("[data-del]").addEventListener("click", () => {
+          state.buttons.splice(idx, 1);
+          renderEditor();
+          syncPreview();
+        });
+
+        container.appendChild(card);
+      });
+    }
+
+    async function init() {
+      const resp = await fetch(`./config.json?v=${Date.now()}`);
+      state = await resp.json();
+      renderEditor();
+      syncPreview();
+
+      ["brandTitle", "subtitle", "coverImage"].forEach((id) => {
+        document.getElementById(id).addEventListener("input", (e) => {
+          state[id] = e.target.value;
+          syncPreview();
+        });
+      });
+
+      ["bgMode", "cardTone"].forEach((id) => {
+        document.getElementById(id).addEventListener("change", (e) => {
+          state.theme = state.theme || {};
+          state.theme[id] = e.target.value;
+          syncPreview();
+        });
+      });
+
+      document.getElementById("addBtn").addEventListener("click", () => {
+        state.buttons.push({
+          id: "btn_" + Date.now().toString(36),
+          title: "Новая кнопка",
+          subtitle: "Описание ссылки",
+          url: "https://t.me/",
+          icon: "✨",
+          variant: "chrome-iridescent",
+          shape: "pill",
+          bgImage: ""
+        });
+        renderEditor();
+        syncPreview();
+      });
+
+      document.getElementById("copyBtn").addEventListener("click", async () => {
+        await navigator.clipboard.writeText(JSON.stringify(state, null, 2));
+        showToast("✅ config.json скопирован в буфер обмена!");
+      });
+
+      document.getElementById("downloadBtn").addEventListener("click", () => {
+        const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "config.json";
+        a.click();
+        URL.revokeObjectURL(a.href);
+        showToast("💾 config.json скачан!");
+      });
+
+      document.getElementById("resetBtn").addEventListener("click", async () => {
+        localStorage.removeItem(STORAGE_KEY);
+        const r = await fetch(`./config.json?v=${Date.now()}`);
+        state = await r.json();
+        renderEditor();
+        syncPreview();
+        showToast("↺ Сброшено к config.json с сервера");
+      });
+
+      frame.addEventListener("load", syncPreview);
+    }
+
+    init();
+  </script>
+</body>
+</html>
