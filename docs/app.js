@@ -524,10 +524,8 @@ function renderApp(config) {
 
 async function loadInitialConfig() {
   const params = new URLSearchParams(window.location.search);
-  const previewBar = document.getElementById("previewBar");
 
   if (params.get("preview") === "1") {
-    previewBar.hidden = false;
     const saved = localStorage.getItem(STORAGE_PREVIEW_KEY);
     if (saved) {
       try {
