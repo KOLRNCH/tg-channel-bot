@@ -2,6 +2,7 @@
 .env
 data/
 /assets/
+botfather_preview_640x360.png
 __pycache__/
 *.pyc
 .pytest_cache/
