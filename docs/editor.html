@@ -76,6 +76,13 @@
 
     textarea { min-height: 70px; resize: vertical; }
 
+    .preset-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 14px;
+    }
+
     .btn-card {
       background: rgba(255, 255, 255, 0.03);
       border: 1px solid var(--border);
@@ -144,8 +151,8 @@
     <section class="panel">
       <h1>✦ Конструктор Digital / Chrome Mini App</h1>
       <p class="lead">
-        Мрачный диджитал-стиль на чистом коде: 3D-звезда с дизерингом, хромовые переливания, акценты площадок и водяная волна по нажатию.
-        Скопируйте <code>config.json</code> и вставьте его в <code>docs/config.json</code> на GitHub.
+        Редактируйте кнопки локально или через команду <code>/admin</code> в вашем боте.
+        Посторонние не могут изменить ваш сайт: в браузере изменения видны только локально, а в GitHub может сохранять только владелец репозитория или ваш бот с личным токеном.
       </p>
 
       <div class="grid-2">
@@ -199,11 +206,12 @@
         </label>
       </div>
 
-      <div style="display:flex; justify-content:space-between; align-items:center; margin:18px 0 10px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin:18px 0 8px;">
         <h2 style="margin:0;">Кнопки</h2>
-        <button id="addBtn" class="success" type="button">➕ Добавить кнопку</button>
+        <button id="addBtn" class="success" type="button">➕ Своя кнопка</button>
       </div>
 
+      <div class="preset-bar" id="presetBar"></div>
       <div id="buttonsEditor"></div>
 
       <div class="actions" style="margin-top:16px;">
@@ -237,23 +245,51 @@
       ["twitch", "🟣 Twitch (#A855F7)"],
       ["telegram", "🔵 Telegram (#38BDF8)"],
       ["emerald", "🟢 Предложка (#22C55E)"],
+      ["donate", "🟡 Boosty / Донат (#F59E0B)"],
+      ["discord", "🟣 Discord (#6366F1)"],
+      ["tiktok", "🩷 TikTok (#FF0050)"],
+      ["kick", "🟢 Kick (#53FC18)"],
+      ["vk", "🔵 VK (#3B82F6)"],
+      ["instagram", "🩷 Instagram (#EC4899)"],
       ["silver", "⚪ ЧБ Серебро"]
     ];
     const ICONS = [
-      ["youtube", "Лого YouTube"],
-      ["twitch", "Лого Twitch"],
-      ["telegram", "Лого Telegram"],
-      ["suggest", "Иконка диалога"],
-      ["link", "Иконка ссылки"]
+      ["youtube", "YouTube"],
+      ["twitch", "Twitch"],
+      ["telegram", "Telegram"],
+      ["suggest", "Предложка / Диалог"],
+      ["donate", "Донат / Boosty"],
+      ["discord", "Discord"],
+      ["tiktok", "TikTok"],
+      ["kick", "Kick"],
+      ["vk", "VK"],
+      ["instagram", "Instagram"],
+      ["link", "Ссылка"]
     ];
     const SHAPES = [
       ["pill", "Обычная кнопка (капсула)"],
       ["starburst", "⭐ Угловая звёздочка-стикер"]
     ];
+    const PRESETS = [
+      { label: "+ Донат / Boosty", title: "Поддержать", subtitle: "Boosty / DonationAlerts", icon: "donate", accent: "donate", url: "https://boosty.to/" },
+      { label: "+ Discord", title: "Discord", subtitle: "Голосовой сервер", icon: "discord", accent: "discord", url: "https://discord.gg/" },
+      { label: "+ TikTok", title: "TikTok", subtitle: "Клипы и шортсы", icon: "tiktok", accent: "tiktok", url: "https://www.tiktok.com/" },
+      { label: "+ Kick", title: "Kick", subtitle: "Стримы", icon: "kick", accent: "kick", url: "https://kick.com/" },
+      { label: "+ VK", title: "VK", subtitle: "Паблик и посты", icon: "vk", accent: "vk", url: "https://vk.com/" },
+      { label: "+ Instagram", title: "Instagram", subtitle: "Сторис и фото", icon: "instagram", accent: "instagram", url: "https://instagram.com/" }
+    ];
 
     let state = null;
     const frame = document.getElementById("previewFrame");
     const toast = document.getElementById("toast");
+
+    function escapeHtml(str) {
+      return String(str || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
 
     function showToast(msg) {
       toast.textContent = msg;
@@ -271,6 +307,35 @@
       return list.map(([val, lbl]) =>
         `<option value="${val}" ${selected === val ? "selected" : ""}>${lbl}</option>`
       ).join("");
+    }
+
+    function addButtonFromPreset(preset) {
+      state.buttons.push({
+        id: "btn_" + Date.now().toString(36),
+        title: preset.title,
+        subtitle: preset.subtitle,
+        url: preset.url,
+        icon: preset.icon,
+        variant: "cyber-dither",
+        accent: preset.accent,
+        shape: "pill",
+        bgImage: ""
+      });
+      renderEditor();
+      syncPreview();
+    }
+
+    function renderPresetBar() {
+      const bar = document.getElementById("presetBar");
+      bar.innerHTML = "";
+      PRESETS.forEach((p) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "secondary small";
+        b.textContent = p.label;
+        b.addEventListener("click", () => addButtonFromPreset(p));
+        bar.appendChild(b);
+      });
     }
 
     function renderEditor() {
@@ -291,7 +356,7 @@
 
         card.innerHTML = `
           <div class="btn-card-head">
-            <span class="btn-card-title">#${idx + 1} ${btn.title || "Кнопка"}</span>
+            <span class="btn-card-title">#${idx + 1} ${escapeHtml(btn.title || "Кнопка")}</span>
             <div class="actions">
               <button class="secondary small" data-move="-1" type="button">↑</button>
               <button class="secondary small" data-move="1" type="button">↓</button>
@@ -299,12 +364,12 @@
             </div>
           </div>
           <div class="grid-2">
-            <label>Текст кнопки <input data-field="title" value="${(btn.title || "").replace(/"/g, "&quot;")}" /></label>
+            <label>Текст кнопки <input data-field="title" value="${escapeHtml(btn.title)}" /></label>
             <label>Иконка <select data-field="icon">${optionsHtml(ICONS, btn.icon || "link")}</select></label>
           </div>
           <div class="grid-2">
-            <label>Подпись <input data-field="subtitle" value="${(btn.subtitle || "").replace(/"/g, "&quot;")}" /></label>
-            <label>Ссылка (URL) <input data-field="url" value="${(btn.url || "").replace(/"/g, "&quot;")}" /></label>
+            <label>Подпись <input data-field="subtitle" value="${escapeHtml(btn.subtitle)}" /></label>
+            <label>Ссылка (URL) <input data-field="url" value="${escapeHtml(btn.url)}" /></label>
           </div>
           <div class="grid-2">
             <label>Хром-покрытие <select data-field="variant">${optionsHtml(VARIANTS, btn.variant || "cyber-dither")}</select></label>
@@ -312,7 +377,7 @@
           </div>
           <div class="grid-2">
             <label>Форма <select data-field="shape">${optionsHtml(SHAPES, btn.shape || "pill")}</select></label>
-            <label>Фото на фон (для «Фото + стекло») <input data-field="bgImage" placeholder="https://..." value="${(btn.bgImage || "").replace(/"/g, "&quot;")}" /></label>
+            <label>Фото на фон (для «Фото + стекло») <input data-field="bgImage" placeholder="https://..." value="${escapeHtml(btn.bgImage)}" /></label>
           </div>
         `;
 
@@ -349,6 +414,7 @@
     }
 
     async function init() {
+      renderPresetBar();
       const resp = await fetch(`./config.json?v=${Date.now()}`);
       state = await resp.json();
       renderEditor();
@@ -375,19 +441,13 @@
       });
 
       document.getElementById("addBtn").addEventListener("click", () => {
-        state.buttons.push({
-          id: "btn_" + Date.now().toString(36),
+        addButtonFromPreset({
           title: "Новая ссылка",
           subtitle: "Описание",
-          url: "https://t.me/",
           icon: "link",
-          variant: "cyber-dither",
           accent: "silver",
-          shape: "pill",
-          bgImage: ""
+          url: "https://t.me/"
         });
-        renderEditor();
-        syncPreview();
       });
 
       document.getElementById("copyBtn").addEventListener("click", async () => {

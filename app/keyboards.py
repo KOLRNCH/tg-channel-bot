@@ -7,6 +7,7 @@ from urllib.parse import urlparse
 
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
+from app.miniapp_config import MiniAppButton, MiniAppConfig
 from app.post_config import ButtonConfig, ButtonStyleName, PostConfig
 
 STYLE_BADGES: dict[ButtonStyleName, str] = {
@@ -95,7 +96,12 @@ def build_admin_main_kb(config: PostConfig) -> InlineKeyboardMarkup:
         ],
         [
             InlineKeyboardButton(
-                text="🧩 Узнать ID кастом-эмодзи",
+                text="🌐 Mini App (сайт и кнопки)",
+                callback_data="adm:miniapp",
+                style="primary",
+            ),
+            InlineKeyboardButton(
+                text="🧩 ID кастом-эмодзи",
                 callback_data="adm:emoji_id",
             ),
         ],
@@ -271,5 +277,124 @@ def build_submission_actions_kb(user_id: int) -> InlineKeyboardMarkup:
                     style="primary",
                 )
             ]
+        ]
+    )
+
+
+def build_miniapp_menu_kb(config: MiniAppConfig, has_github_token: bool) -> InlineKeyboardMarkup:
+    """Build Mini App button & header manager keyboard inside `/admin`."""
+    rows: list[list[InlineKeyboardButton]] = []
+    for btn in config.buttons:
+        badge = "⭐" if btn.shape == "starburst" else "•"
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text=f"{badge} {btn.title} ({btn.accent})"[:60],
+                    callback_data=f"adm:ma_btn:{btn.id}",
+                )
+            ]
+        )
+
+    rows.append(
+        [
+            InlineKeyboardButton(
+                text="➕ Добавить кнопку в Mini App",
+                callback_data="adm:ma_add",
+                style="success",
+            ),
+            InlineKeyboardButton(
+                text="✏️ Текст шапки",
+                callback_data="adm:ma_text",
+            ),
+        ]
+    )
+    rows.append(
+        [
+            InlineKeyboardButton(
+                text="🚀 Обновить сайт на GitHub" if has_github_token else "💾 Сохранить docs/config.json",
+                callback_data="adm:ma_push",
+                style="primary",
+            )
+        ]
+    )
+    rows.append([InlineKeyboardButton(text="⬅️ В главное меню", callback_data="adm:home")])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def build_miniapp_presets_kb() -> InlineKeyboardMarkup:
+    """Build platform preset selector when adding a new Mini App button."""
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="▶ YouTube", callback_data="adm:ma_preset:youtube", style="danger"),
+                InlineKeyboardButton(text="🟣 Twitch", callback_data="adm:ma_preset:twitch"),
+            ],
+            [
+                InlineKeyboardButton(text="💬 Чат в ТГ", callback_data="adm:ma_preset:telegram", style="primary"),
+                InlineKeyboardButton(text="📩 Предложка (⭐)", callback_data="adm:ma_preset:suggest", style="success"),
+            ],
+            [
+                InlineKeyboardButton(text="⚡ Донат / Boosty", callback_data="adm:ma_preset:donate"),
+                InlineKeyboardButton(text="🎮 Discord", callback_data="adm:ma_preset:discord"),
+            ],
+            [
+                InlineKeyboardButton(text="🎵 TikTok", callback_data="adm:ma_preset:tiktok"),
+                InlineKeyboardButton(text="🟩 Kick", callback_data="adm:ma_preset:kick"),
+            ],
+            [
+                InlineKeyboardButton(text="🔗 Своя кнопка", callback_data="adm:ma_preset:custom"),
+            ],
+            [InlineKeyboardButton(text="⬅️ Назад", callback_data="adm:miniapp")],
+        ]
+    )
+
+
+def build_miniapp_btn_edit_kb(btn: MiniAppButton) -> InlineKeyboardMarkup:
+    """Build per-button editor for a Mini App button."""
+    bid = btn.id
+    shape_label = "⭐ Звёздочка" if btn.shape == "starburst" else "▬ Капсула"
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="✏️ Название", callback_data=f"adm:ma_btn_title:{bid}"),
+                InlineKeyboardButton(text="📝 Подпись", callback_data=f"adm:ma_btn_sub:{bid}"),
+            ],
+            [
+                InlineKeyboardButton(text="🔗 Ссылка", callback_data=f"adm:ma_btn_url:{bid}"),
+                InlineKeyboardButton(text=f"📐 {shape_label}", callback_data=f"adm:ma_btn_shape:{bid}"),
+            ],
+            [
+                InlineKeyboardButton(text=f"🎨 Акцент: {btn.accent}", callback_data=f"adm:ma_btn_accent_menu:{bid}"),
+            ],
+            [
+                InlineKeyboardButton(text="⬆️ Выше", callback_data=f"adm:ma_btn_up:{bid}"),
+                InlineKeyboardButton(text="⬇️ Ниже", callback_data=f"adm:ma_btn_down:{bid}"),
+                InlineKeyboardButton(text="🗑 Удалить", callback_data=f"adm:ma_btn_del:{bid}", style="danger"),
+            ],
+            [InlineKeyboardButton(text="⬅️ К кнопкам Mini App", callback_data="adm:miniapp")],
+        ]
+    )
+
+
+def build_miniapp_accent_picker_kb(button_id: str) -> InlineKeyboardMarkup:
+    """Build accent palette selector for a Mini App button."""
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="🔴 YouTube", callback_data=f"adm:ma_setaccent:{button_id}:youtube", style="danger"),
+                InlineKeyboardButton(text="🟣 Twitch", callback_data=f"adm:ma_setaccent:{button_id}:twitch"),
+                InlineKeyboardButton(text="🔵 Telegram", callback_data=f"adm:ma_setaccent:{button_id}:telegram", style="primary"),
+            ],
+            [
+                InlineKeyboardButton(text="🟢 Предложка", callback_data=f"adm:ma_setaccent:{button_id}:emerald", style="success"),
+                InlineKeyboardButton(text="🟡 Донат", callback_data=f"adm:ma_setaccent:{button_id}:donate"),
+                InlineKeyboardButton(text="🎮 Discord", callback_data=f"adm:ma_setaccent:{button_id}:discord"),
+            ],
+            [
+                InlineKeyboardButton(text="🩷 TikTok", callback_data=f"adm:ma_setaccent:{button_id}:tiktok"),
+                InlineKeyboardButton(text="🟩 Kick", callback_data=f"adm:ma_setaccent:{button_id}:kick"),
+                InlineKeyboardButton(text="⚪ ЧБ Серебро", callback_data=f"adm:ma_setaccent:{button_id}:silver"),
+            ],
+            [InlineKeyboardButton(text="⬅️ Назад", callback_data=f"adm:ma_btn:{button_id}")],
         ]
     )

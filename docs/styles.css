@@ -113,14 +113,15 @@ body.card-light {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: max(16px, env(safe-area-inset-top)) 16px max(28px, env(safe-area-inset-bottom));
+  justify-content: flex-start;
+  padding: max(18px, env(safe-area-inset-top)) 16px max(28px, env(safe-area-inset-bottom));
 }
 
 .card-wrapper {
   position: relative;
   width: 100%;
   max-width: 396px;
+  margin: auto 0;
 }
 
 .card-wrapper.has-starburst {
@@ -463,6 +464,42 @@ body.card-light {
   --accent-color: #f4f4f5;
   --accent-glow: rgba(255, 255, 255, 0.36);
   --ripple-tint: rgba(255, 255, 255, 0.92);
+}
+
+.fx-btn--accent-donate {
+  --accent-color: #f59e0b;
+  --accent-glow: rgba(245, 158, 11, 0.38);
+  --ripple-tint: rgba(252, 211, 77, 0.94);
+}
+
+.fx-btn--accent-discord {
+  --accent-color: #6366f1;
+  --accent-glow: rgba(99, 102, 241, 0.38);
+  --ripple-tint: rgba(165, 180, 252, 0.94);
+}
+
+.fx-btn--accent-tiktok {
+  --accent-color: #ff0050;
+  --accent-glow: rgba(255, 0, 80, 0.36);
+  --ripple-tint: rgba(255, 110, 155, 0.94);
+}
+
+.fx-btn--accent-kick {
+  --accent-color: #53fc18;
+  --accent-glow: rgba(83, 252, 24, 0.34);
+  --ripple-tint: rgba(160, 255, 130, 0.94);
+}
+
+.fx-btn--accent-vk {
+  --accent-color: #3b82f6;
+  --accent-glow: rgba(59, 130, 246, 0.36);
+  --ripple-tint: rgba(147, 197, 253, 0.94);
+}
+
+.fx-btn--accent-instagram {
+  --accent-color: #ec4899;
+  --accent-glow: rgba(236, 72, 153, 0.36);
+  --ripple-tint: rgba(249, 168, 212, 0.94);
 }
 
 .fx-btn__icon {

@@ -19,9 +19,20 @@ from app.keyboards import (
     build_button_edit_kb,
     build_buttons_list_kb,
     build_cancel_kb,
+    build_miniapp_accent_picker_kb,
+    build_miniapp_btn_edit_kb,
+    build_miniapp_menu_kb,
+    build_miniapp_presets_kb,
     build_photo_menu_kb,
     build_style_picker_kb,
     is_valid_button_url,
+)
+from app.miniapp_config import (
+    MINIAPP_PRESETS,
+    MiniAppButton,
+    MiniAppConfig,
+    MiniAppConfigStore,
+    push_miniapp_config_to_github,
 )
 from app.post_config import ButtonConfig, ButtonStyleName, PostConfig, PostConfigStore, VALID_STYLES
 from app.publisher import PostTypeMismatchError, send_welcome_post, update_published_post
@@ -44,15 +55,24 @@ class AdminState(StatesGroup):
     editing_btn_url = State()
     editing_btn_row = State()
     editing_btn_emoji = State()
+    adding_ma_title = State()
+    adding_ma_url = State()
+    editing_ma_title = State()
+    editing_ma_subtitle = State()
+    editing_ma_btn_title = State()
+    editing_ma_btn_sub = State()
+    editing_ma_btn_url = State()
 
 
 def create_admin_router(
     settings: Settings,
     store: PostConfigStore,
+    miniapp_store: MiniAppConfigStore | None = None,
 ) -> Router:
     """Create the admin router restricted to configured `ADMIN_IDS`."""
     router = Router(name="admin")
     admin_filter = F.from_user.id.in_(settings.admin_ids)
+    ma_store = miniapp_store or MiniAppConfigStore(settings.miniapp_config_path)
 
     def _admin_summary_text(config: PostConfig) -> str:
         status = (
@@ -112,6 +132,36 @@ def create_admin_router(
             await target.message.edit_text(text, parse_mode="HTML", reply_markup=markup)
         elif isinstance(target, Message):
             await target.answer(text, parse_mode="HTML", reply_markup=markup)
+
+    async def _show_miniapp_menu(target: Message | CallbackQuery, config: MiniAppConfig) -> None:
+        sync_note = (
+            f"Автодеплой в <code>{html.escape(settings.github_repo)}</code> включён ✅"
+            if settings.github_token
+            else "Автодеплой на GitHub: добавьте <code>GITHUB_TOKEN</code> в <code>.env</code> (пока сохраняет локально в <code>docs/config.json</code>)"
+        )
+        text = (
+            "🌐 <b>Управление Mini App-визиткой</b>\n\n"
+            f"<b>Заголовок:</b> {html.escape(config.brandTitle)}\n"
+            f"<b>Кнопок:</b> {len(config.buttons)}\n"
+            f"{sync_note}\n\n"
+            "<i>Нажмите на кнопку для настройки или добавьте новую:</i>"
+        )
+        markup = build_miniapp_menu_kb(config, has_github_token=bool(settings.github_token))
+        if isinstance(target, CallbackQuery) and target.message:
+            await target.message.edit_text(text, parse_mode="HTML", reply_markup=markup)
+        elif isinstance(target, Message):
+            await target.answer(text, parse_mode="HTML", reply_markup=markup)
+
+    def _miniapp_btn_details(btn: MiniAppButton) -> str:
+        shape_name = "⭐ Угловая звёздочка" if btn.shape == "starburst" else "▬ Капсула"
+        return (
+            "✨ <b>Кнопка Mini App</b>\n\n"
+            f"<b>Название:</b> {html.escape(btn.title)}\n"
+            f"<b>Подпись:</b> {html.escape(btn.subtitle or '—')}\n"
+            f"<b>Ссылка:</b> <code>{html.escape(btn.url)}</code>\n"
+            f"<b>Форма:</b> {shape_name}\n"
+            f"<b>Акцент:</b> <code>{html.escape(btn.accent)}</code>"
+        )
 
     @router.message(Command("id"))
     async def cmd_id(message: Message) -> None:
@@ -691,5 +741,355 @@ def create_admin_router(
 
         store.save(config)
         await callback.answer("✅ Закреплённый пост в канале обновлён!")
+
+    # --- Mini App button & header manager (docs/config.json) ---
+
+    @router.callback_query(admin_filter, F.data == "adm:miniapp")
+    async def cb_miniapp_menu(callback: CallbackQuery, state: FSMContext) -> None:
+        await state.clear()
+        await _show_miniapp_menu(callback, ma_store.load())
+        await callback.answer()
+
+    @router.callback_query(admin_filter, F.data == "adm:ma_text")
+    async def cb_ma_text(callback: CallbackQuery, state: FSMContext) -> None:
+        await state.set_state(AdminState.editing_ma_title)
+        if callback.message:
+            await callback.message.edit_text(
+                "✏️ <b>Заголовок Mini App</b>\n\nОтправьте новый заголовок карточки (например <code>Мой Хаб</code>):",
+                parse_mode="HTML",
+                reply_markup=build_cancel_kb("adm:miniapp"),
+            )
+        await callback.answer()
+
+    @router.message(admin_filter, AdminState.editing_ma_title, F.text)
+    async def msg_ma_title(message: Message, state: FSMContext) -> None:
+        config = ma_store.load()
+        config.brandTitle = message.text.strip()
+        ma_store.save(config)
+        await state.set_state(AdminState.editing_ma_subtitle)
+        await message.answer(
+            "📝 Теперь отправьте описание под заголовком (или точку <code>.</code>, чтобы оставить текущее):",
+            parse_mode="HTML",
+            reply_markup=build_cancel_kb("adm:miniapp"),
+        )
+
+    @router.message(admin_filter, AdminState.editing_ma_subtitle, F.text)
+    async def msg_ma_subtitle(message: Message, state: FSMContext) -> None:
+        config = ma_store.load()
+        if message.text.strip() != ".":
+            config.subtitle = message.text.strip()
+            ma_store.save(config)
+        await state.clear()
+        await message.answer("✅ Шапка Mini App обновлена!")
+        await _show_miniapp_menu(message, config)
+
+    @router.callback_query(admin_filter, F.data == "adm:ma_add")
+    async def cb_ma_add(callback: CallbackQuery, state: FSMContext) -> None:
+        await state.clear()
+        if callback.message:
+            await callback.message.edit_text(
+                "➕ <b>Добавить кнопку в Mini App</b>\n\nВыберите площадку (подставим иконку и цвет автоматически) или «Своя кнопка»:",
+                parse_mode="HTML",
+                reply_markup=build_miniapp_presets_kb(),
+            )
+        await callback.answer()
+
+    @router.callback_query(admin_filter, F.data.startswith("adm:ma_preset:"))
+    async def cb_ma_preset(callback: CallbackQuery, state: FSMContext) -> None:
+        preset_key = callback.data.split(":", 2)[2]
+        preset = MINIAPP_PRESETS.get(preset_key, MINIAPP_PRESETS["custom"])
+        await state.update_data(ma_preset_key=preset_key)
+        if preset_key == "custom":
+            await state.set_state(AdminState.adding_ma_title)
+            if callback.message:
+                await callback.message.edit_text(
+                    "➕ Введите название новой кнопки (например <code>Мой Steam</code>):",
+                    parse_mode="HTML",
+                    reply_markup=build_cancel_kb("adm:miniapp"),
+                )
+        else:
+            await state.update_data(ma_new_title=preset["title"])
+            await state.set_state(AdminState.adding_ma_url)
+            if callback.message:
+                await callback.message.edit_text(
+                    f"➕ <b>Кнопка «{html.escape(preset['title'])}»</b>\n\n"
+                    f"Отправьте ссылку (например <code>{html.escape(preset['url_hint'])}</code>):",
+                    parse_mode="HTML",
+                    reply_markup=build_cancel_kb("adm:miniapp"),
+                )
+        await callback.answer()
+
+    @router.message(admin_filter, AdminState.adding_ma_title, F.text)
+    async def msg_ma_add_title(message: Message, state: FSMContext) -> None:
+        await state.update_data(ma_new_title=message.text.strip())
+        await state.set_state(AdminState.adding_ma_url)
+        await message.answer(
+            "🔗 Отправьте ссылку для новой кнопки (<code>https://...</code> или <code>tg://...</code>):",
+            parse_mode="HTML",
+            reply_markup=build_cancel_kb("adm:miniapp"),
+        )
+
+    @router.message(admin_filter, AdminState.adding_ma_url, F.text)
+    async def msg_ma_add_url(message: Message, state: FSMContext, bot: Bot) -> None:
+        raw_url = message.text.strip()
+        if not is_valid_button_url(raw_url):
+            await message.answer(
+                "⚠️ Ссылка должна начинаться с <code>https://</code>, <code>http://</code> или <code>tg://</code>:",
+                parse_mode="HTML",
+                reply_markup=build_cancel_kb("adm:miniapp"),
+            )
+            return
+
+        data = await state.get_data()
+        preset = MINIAPP_PRESETS.get(data.get("ma_preset_key", "custom"), MINIAPP_PRESETS["custom"])
+        me = await bot.get_me()
+        resolved_url = raw_url.replace("{bot_username}", (me.username or "your_bot").lstrip("@"))
+
+        config = ma_store.load()
+        btn = config.add_button(
+            title=data.get("ma_new_title") or preset["title"],
+            subtitle=preset["subtitle"],
+            url=resolved_url,
+            icon=preset["icon"],
+            variant=preset["variant"],
+            accent=preset["accent"],
+            shape=preset["shape"],
+        )
+        ma_store.save(config)
+        await state.clear()
+        await message.answer(
+            f"✅ Кнопка <b>{html.escape(btn.title)}</b> добавлена! Не забудьте нажать «🚀 Обновить сайт на GitHub».",
+            parse_mode="HTML",
+        )
+        await _show_miniapp_menu(message, config)
+
+    @router.callback_query(admin_filter, F.data.startswith("adm:ma_btn:"))
+    async def cb_ma_btn_detail(callback: CallbackQuery, state: FSMContext) -> None:
+        await state.clear()
+        button_id = callback.data.split(":", 2)[2]
+        config = ma_store.load()
+        btn = config.find_button(button_id)
+        if not btn:
+            await callback.answer("Кнопка не найдена", show_alert=True)
+            await _show_miniapp_menu(callback, config)
+            return
+        if callback.message:
+            await callback.message.edit_text(
+                _miniapp_btn_details(btn),
+                parse_mode="HTML",
+                reply_markup=build_miniapp_btn_edit_kb(btn),
+            )
+        await callback.answer()
+
+    @router.callback_query(admin_filter, F.data.startswith("adm:ma_btn_title:"))
+    async def cb_ma_btn_title(callback: CallbackQuery, state: FSMContext) -> None:
+        button_id = callback.data.split(":", 2)[2]
+        await state.set_state(AdminState.editing_ma_btn_title)
+        await state.update_data(edit_ma_btn_id=button_id)
+        if callback.message:
+            await callback.message.edit_text(
+                "✏️ Введите новое название кнопки:",
+                reply_markup=build_cancel_kb(f"adm:ma_btn:{button_id}"),
+            )
+        await callback.answer()
+
+    @router.message(admin_filter, AdminState.editing_ma_btn_title, F.text)
+    async def msg_ma_btn_title(message: Message, state: FSMContext) -> None:
+        button_id = (await state.get_data())["edit_ma_btn_id"]
+        config = ma_store.load()
+        btn = config.find_button(button_id)
+        if btn:
+            btn.title = message.text.strip()
+            ma_store.save(config)
+        await state.clear()
+        if btn:
+            await message.answer(
+                _miniapp_btn_details(btn),
+                parse_mode="HTML",
+                reply_markup=build_miniapp_btn_edit_kb(btn),
+            )
+
+    @router.callback_query(admin_filter, F.data.startswith("adm:ma_btn_sub:"))
+    async def cb_ma_btn_sub(callback: CallbackQuery, state: FSMContext) -> None:
+        button_id = callback.data.split(":", 2)[2]
+        await state.set_state(AdminState.editing_ma_btn_sub)
+        await state.update_data(edit_ma_btn_id=button_id)
+        if callback.message:
+            await callback.message.edit_text(
+                "📝 Введите новую подпись под кнопкой (или <code>-</code> чтобы убрать):",
+                parse_mode="HTML",
+                reply_markup=build_cancel_kb(f"adm:ma_btn:{button_id}"),
+            )
+        await callback.answer()
+
+    @router.message(admin_filter, AdminState.editing_ma_btn_sub, F.text)
+    async def msg_ma_btn_sub(message: Message, state: FSMContext) -> None:
+        button_id = (await state.get_data())["edit_ma_btn_id"]
+        config = ma_store.load()
+        btn = config.find_button(button_id)
+        if btn:
+            val = message.text.strip()
+            btn.subtitle = "" if val == "-" else val
+            ma_store.save(config)
+        await state.clear()
+        if btn:
+            await message.answer(
+                _miniapp_btn_details(btn),
+                parse_mode="HTML",
+                reply_markup=build_miniapp_btn_edit_kb(btn),
+            )
+
+    @router.callback_query(admin_filter, F.data.startswith("adm:ma_btn_url:"))
+    async def cb_ma_btn_url(callback: CallbackQuery, state: FSMContext) -> None:
+        button_id = callback.data.split(":", 2)[2]
+        await state.set_state(AdminState.editing_ma_btn_url)
+        await state.update_data(edit_ma_btn_id=button_id)
+        if callback.message:
+            await callback.message.edit_text(
+                "🔗 Отправьте новую ссылку (<code>https://...</code> или <code>tg://...</code>):",
+                parse_mode="HTML",
+                reply_markup=build_cancel_kb(f"adm:ma_btn:{button_id}"),
+            )
+        await callback.answer()
+
+    @router.message(admin_filter, AdminState.editing_ma_btn_url, F.text)
+    async def msg_ma_btn_url(message: Message, state: FSMContext) -> None:
+        button_id = (await state.get_data())["edit_ma_btn_id"]
+        url = message.text.strip()
+        if not is_valid_button_url(url):
+            await message.answer(
+                "⚠️ Некорректная ссылка. Используйте <code>https://...</code> или <code>tg://...</code>:",
+                parse_mode="HTML",
+                reply_markup=build_cancel_kb(f"adm:ma_btn:{button_id}"),
+            )
+            return
+        config = ma_store.load()
+        btn = config.find_button(button_id)
+        if btn:
+            btn.url = url
+            ma_store.save(config)
+        await state.clear()
+        if btn:
+            await message.answer(
+                _miniapp_btn_details(btn),
+                parse_mode="HTML",
+                reply_markup=build_miniapp_btn_edit_kb(btn),
+            )
+
+    @router.callback_query(admin_filter, F.data.startswith("adm:ma_btn_shape:"))
+    async def cb_ma_btn_shape(callback: CallbackQuery) -> None:
+        button_id = callback.data.split(":", 2)[2]
+        config = ma_store.load()
+        btn = config.find_button(button_id)
+        if not btn:
+            await callback.answer("Не найдена", show_alert=True)
+            return
+        btn.shape = "starburst" if btn.shape != "starburst" else "pill"
+        if btn.shape == "starburst" and btn.variant == "cyber-dither":
+            btn.variant = "chrome-silver"
+        elif btn.shape == "pill" and btn.variant == "chrome-silver":
+            btn.variant = "cyber-dither"
+        ma_store.save(config)
+        if callback.message:
+            await callback.message.edit_text(
+                _miniapp_btn_details(btn),
+                parse_mode="HTML",
+                reply_markup=build_miniapp_btn_edit_kb(btn),
+            )
+        await callback.answer("Форма переключена")
+
+    @router.callback_query(admin_filter, F.data.startswith("adm:ma_btn_accent_menu:"))
+    async def cb_ma_accent_menu(callback: CallbackQuery) -> None:
+        button_id = callback.data.split(":", 2)[2]
+        if callback.message:
+            await callback.message.edit_text(
+                "🎨 <b>Выберите цвет акцента площадки:</b>",
+                parse_mode="HTML",
+                reply_markup=build_miniapp_accent_picker_kb(button_id),
+            )
+        await callback.answer()
+
+    @router.callback_query(admin_filter, F.data.startswith("adm:ma_setaccent:"))
+    async def cb_ma_setaccent(callback: CallbackQuery) -> None:
+        _, _, button_id, accent = callback.data.split(":", 3)
+        config = ma_store.load()
+        btn = config.find_button(button_id)
+        if btn:
+            btn.accent = accent
+            ma_store.save(config)
+        if btn and callback.message:
+            await callback.message.edit_text(
+                _miniapp_btn_details(btn),
+                parse_mode="HTML",
+                reply_markup=build_miniapp_btn_edit_kb(btn),
+            )
+        await callback.answer("Акцент обновлён")
+
+    @router.callback_query(admin_filter, F.data.startswith("adm:ma_btn_up:"))
+    async def cb_ma_btn_up(callback: CallbackQuery) -> None:
+        button_id = callback.data.split(":", 2)[2]
+        config = ma_store.load()
+        moved = config.move_button(button_id, -1)
+        if moved:
+            ma_store.save(config)
+        btn = config.find_button(button_id)
+        if btn and moved and callback.message:
+            await callback.message.edit_text(
+                _miniapp_btn_details(btn),
+                parse_mode="HTML",
+                reply_markup=build_miniapp_btn_edit_kb(btn),
+            )
+        await callback.answer("Выше" if moved else "Уже первая")
+
+    @router.callback_query(admin_filter, F.data.startswith("adm:ma_btn_down:"))
+    async def cb_ma_btn_down(callback: CallbackQuery) -> None:
+        button_id = callback.data.split(":", 2)[2]
+        config = ma_store.load()
+        moved = config.move_button(button_id, 1)
+        if moved:
+            ma_store.save(config)
+        btn = config.find_button(button_id)
+        if btn and moved and callback.message:
+            await callback.message.edit_text(
+                _miniapp_btn_details(btn),
+                parse_mode="HTML",
+                reply_markup=build_miniapp_btn_edit_kb(btn),
+            )
+        await callback.answer("Ниже" if moved else "Уже последняя")
+
+    @router.callback_query(admin_filter, F.data.startswith("adm:ma_btn_del:"))
+    async def cb_ma_btn_del(callback: CallbackQuery) -> None:
+        button_id = callback.data.split(":", 2)[2]
+        config = ma_store.load()
+        removed = config.remove_button(button_id)
+        if removed:
+            ma_store.save(config)
+        await _show_miniapp_menu(callback, config)
+        await callback.answer("Кнопка удалена" if removed else "Не найдена")
+
+    @router.callback_query(admin_filter, F.data == "adm:ma_push")
+    async def cb_ma_push(callback: CallbackQuery) -> None:
+        config = ma_store.load()
+        ma_store.save(config)
+        if not settings.github_token:
+            await callback.answer(
+                "Сохранено локально в docs/config.json. Чтобы пушить прямо из бота, добавьте GITHUB_TOKEN в .env!",
+                show_alert=True,
+            )
+            return
+        try:
+            commit_sha = await push_miniapp_config_to_github(
+                config_path=settings.miniapp_config_path,
+                github_token=settings.github_token,
+                github_repo=settings.github_repo,
+                branch=settings.github_branch,
+            )
+        except Exception as exc:
+            await callback.answer(f"Ошибка отправки в GitHub: {exc}", show_alert=True)
+            return
+        await callback.answer(
+            f"✅ Отправлено на GitHub ({commit_sha})! Сайт обновится через ~20–30 сек.",
+            show_alert=True,
+        )
 
     return router

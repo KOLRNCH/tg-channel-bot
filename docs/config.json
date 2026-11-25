@@ -46,7 +46,7 @@
       "id": "suggest",
       "title": "ПРЕДЛОЖКА",
       "subtitle": "Личный чат",
-      "url": "https://t.me/your_bot?start=suggest",
+      "url": "https://t.me/my_channel_hubbot?start=suggest",
       "icon": "suggest",
       "variant": "chrome-silver",
       "accent": "emerald",

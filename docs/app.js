@@ -12,6 +12,12 @@ const SVG_ICONS = {
   twitch: `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M4.3 3 3 6.3v12.8h4.7V22h2.7l2.9-2.9h4.1L21 15.5V3H4.3Zm14.9 11.6-2.9 2.9h-4.7l-2.6 2.6v-2.6H5.2V4.8h14v9.8ZM15.5 8h-1.8v5h1.8V8Zm-4.8 0H8.9v5h1.8V8Z"/></svg>`,
   telegram: `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.5 4.3 2.9 11.5c-1.3.5-1.3 1.3-.2 1.6l4.7 1.5 11-6.9c.5-.3 1-.1.6.2l-8.9 8-.3 4.9c.5 0 .7-.2 1-.5l2.3-2.2 4.8 3.5c.9.5 1.5.2 1.7-.8L22.6 5.6c.3-1.2-.5-1.8-1.1-1.3Z"/></svg>`,
   suggest: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 10h8"/><path d="M8 14h4"/></svg>`,
+  donate: `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z"/></svg>`,
+  discord: `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19.3 5.3A16 16 0 0 0 15.4 4l-.4.8a14.4 14.4 0 0 0-6 0L8.6 4a16 16 0 0 0-3.9 1.3C2.2 9 1.5 12.6 1.8 16.2a16.2 16.2 0 0 0 4.8 2.4l1-1.6a10.4 10.4 0 0 1-1.6-.8l.4-.3a11.4 11.4 0 0 0 11.2 0l.4.3c-.5.3-1 .6-1.6.8l1 1.6a16.2 16.2 0 0 0 4.8-2.4c.4-4.2-.6-7.8-2.9-10.9ZM9.5 14c-.9 0-1.6-.8-1.6-1.8s.7-1.8 1.6-1.8 1.6.8 1.6 1.8-.7 1.8-1.6 1.8Zm5 0c-.9 0-1.6-.8-1.6-1.8s.7-1.8 1.6-1.8 1.6.8 1.6 1.8-.7 1.8-1.6 1.8Z"/></svg>`,
+  tiktok: `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M15.5 3h2.9a4.8 4.8 0 0 0 3.6 3.5v2.9a7.7 7.7 0 0 1-3.6-1v6.2a6 6 0 1 1-5.2-5.9v3a3.1 3.1 0 1 0 2.3 3V3Z"/></svg>`,
+  kick: `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M4 3h5v6h3V6h3V3h5v6h-3v3h-3v3h3v3h3v3h-5v-3h-3v-3H9v6H4V3Z"/></svg>`,
+  vk: `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 6.5h3.2c.2 4.1 2 6.6 3.7 7V6.5h3v4c1.7-.2 3.5-2 4.1-4h3c-.5 2.5-2.3 4.3-3.6 5 1.3.6 3.3 2.2 4 5h-3.3c-.7-2.1-2.3-3.7-4.2-3.9v3.9h-.5C6.8 16.5 3.6 12.6 3 6.5Z"/></svg>`,
+  instagram: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>`,
   link: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>`
 };
 
@@ -300,8 +306,18 @@ function spawnWaterDrop(buttonEl, clientX, clientY) {
   setTimeout(() => drop.remove(), 1150);
 }
 
+function isSafeUrl(url) {
+  if (!url) return false;
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "https:" || parsed.protocol === "http:" || parsed.protocol === "tg:";
+  } catch (_) {
+    return false;
+  }
+}
+
 function openTargetUrl(url) {
-  if (!url) return;
+  if (!isSafeUrl(url)) return;
   const tg = getTelegramWebApp();
 
   if (tg && tg.initData) {
@@ -511,18 +527,13 @@ async function loadInitialConfig() {
   const previewBar = document.getElementById("previewBar");
 
   if (params.get("preview") === "1") {
+    previewBar.hidden = false;
     const saved = localStorage.getItem(STORAGE_PREVIEW_KEY);
     if (saved) {
       try {
-        previewBar.hidden = false;
         return JSON.parse(saved);
       } catch (_) {}
     }
-  }
-
-  const tg = getTelegramWebApp();
-  if (!tg || !tg.initData) {
-    previewBar.hidden = false;
   }
 
   const resp = await fetch(`./config.json?v=${Date.now()}`);

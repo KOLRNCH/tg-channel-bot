@@ -11,7 +11,14 @@ from aiogram.types import User
 
 from app.db import Database
 from app.handlers.feedback import format_topic_title, format_user_card
-from app.keyboards import build_channel_keyboard, is_valid_button_url, resolve_button_url
+from app.keyboards import (
+    build_channel_keyboard,
+    build_miniapp_menu_kb,
+    build_miniapp_presets_kb,
+    is_valid_button_url,
+    resolve_button_url,
+)
+from app.miniapp_config import MiniAppConfigStore
 from app.post_config import ButtonConfig, PostConfig, PostConfigStore, create_default_post_config
 from app.publisher import PostTypeMismatchError, send_welcome_post, update_published_post
 from app.settings import load_settings, parse_admin_ids, parse_chat_id
@@ -114,6 +121,29 @@ def test_miniapp_config_json_valid() -> None:
     assert any(btn["shape"] == "starburst" for btn in data["buttons"])
     assert all(btn["variant"] in {"cyber-dither", "chrome-silver"} for btn in data["buttons"])
     assert all(is_valid_button_url(btn["url"]) for btn in data["buttons"])
+
+
+def test_miniapp_store_add_move_delete(tmp_path: Path) -> None:
+    cfg_path = tmp_path / "config.json"
+    store = MiniAppConfigStore(cfg_path)
+    cfg = store.load()
+    added = cfg.add_button(
+        title="Discord",
+        subtitle="Голосовой сервер",
+        url="https://discord.gg/demo",
+        icon="discord",
+        accent="discord",
+    )
+    assert cfg.find_button(added.id) is not None
+    cfg.add_button(title="Boosty", url="https://boosty.to/demo", icon="donate", accent="donate")
+    assert cfg.move_button(added.id, 1) is True
+    store.save(cfg)
+
+    reloaded = store.load()
+    assert [b.title for b in reloaded.buttons] == ["Boosty", "Discord"]
+    assert len(build_miniapp_menu_kb(reloaded, has_github_token=True).inline_keyboard) == 5
+    assert len(build_miniapp_presets_kb().inline_keyboard) >= 5
+    assert reloaded.remove_button(added.id) is True
 
 
 async def test_database_topic_and_dm_mappings(tmp_path: Path) -> None:

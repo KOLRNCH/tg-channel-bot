@@ -44,6 +44,10 @@ class Settings:
     feedback_group_id: int | None
     config_path: Path
     db_path: Path
+    miniapp_config_path: Path
+    github_token: str | None = None
+    github_repo: str = "KOLRNCH/tg-channel-bot"
+    github_branch: str = "main"
 
     @property
     def primary_admin_id(self) -> int:
@@ -71,6 +75,10 @@ def load_settings(base_dir: Path | None = None) -> Settings:
             raise ValueError("FEEDBACK_GROUP_ID must be a numeric supergroup ID (e.g. -100...)")
         feedback_group_id = parsed_group
 
+    github_token = os.getenv("GITHUB_TOKEN", "").strip() or None
+    github_repo = os.getenv("GITHUB_REPO", "KOLRNCH/tg-channel-bot").strip() or "KOLRNCH/tg-channel-bot"
+    github_branch = os.getenv("GITHUB_BRANCH", "main").strip() or "main"
+
     data_dir = root / "data"
     return Settings(
         bot_token=bot_token,
@@ -79,4 +87,8 @@ def load_settings(base_dir: Path | None = None) -> Settings:
         feedback_group_id=feedback_group_id,
         config_path=data_dir / "post_config.json",
         db_path=data_dir / "bot.db",
+        miniapp_config_path=root / "docs" / "config.json",
+        github_token=github_token,
+        github_repo=github_repo,
+        github_branch=github_branch,
     )
