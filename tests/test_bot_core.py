@@ -109,10 +109,10 @@ def test_miniapp_config_json_valid() -> None:
     cfg_path = Path(__file__).resolve().parent.parent / "docs" / "config.json"
     data = json.loads(cfg_path.read_text(encoding="utf-8"))
     assert data["brandTitle"]
-    assert data["coverImage"] == "./assets/cover.jpg"
+    assert data["coverMode"] == "chrome-code"
     assert len(data["buttons"]) == 4
     assert any(btn["shape"] == "starburst" for btn in data["buttons"])
-    assert any(btn["variant"] == "photo-glass" for btn in data["buttons"])
+    assert all(btn["variant"].startswith("chrome-") for btn in data["buttons"])
     assert all(is_valid_button_url(btn["url"]) for btn in data["buttons"])
 
 

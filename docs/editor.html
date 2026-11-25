@@ -7,19 +7,18 @@
   <style>
     :root {
       color-scheme: dark;
-      --panel-bg: #111827;
-      --surface: #1e293b;
-      --border: rgba(255, 255, 255, 0.12);
+      --panel-bg: #111318;
+      --surface: #1b1f27;
+      --border: rgba(255, 255, 255, 0.14);
       --text: #f8fafc;
       --muted: #94a3b8;
-      --accent: #38bdf8;
     }
 
     * { box-sizing: border-box; }
     body {
       margin: 0;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
-      background: #090d16;
+      background: #07080b;
       color: var(--text);
       min-height: 100vh;
     }
@@ -75,7 +74,7 @@
       font-size: 13.5px;
     }
 
-    textarea { min-height: 76px; resize: vertical; }
+    textarea { min-height: 70px; resize: vertical; }
 
     .btn-card {
       background: rgba(255, 255, 255, 0.03);
@@ -94,12 +93,7 @@
     }
 
     .btn-card-title { font-weight: 700; font-size: 14px; }
-
-    .actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; }
 
     button {
       border: 0;
@@ -121,20 +115,20 @@
     .phone-frame {
       position: sticky;
       top: 18px;
-      background: #020617;
+      background: #020408;
       border-radius: 36px;
       padding: 12px;
-      border: 2px solid rgba(255, 255, 255, 0.14);
-      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+      border: 2px solid rgba(255, 255, 255, 0.16);
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.65);
     }
 
     .phone-frame iframe {
       width: 100%;
-      height: 700px;
+      height: 690px;
       border: 0;
       border-radius: 26px;
       display: block;
-      background: #0c63ff;
+      background: #060709;
     }
 
     .toast {
@@ -148,10 +142,10 @@
 <body>
   <div class="layout">
     <section class="panel">
-      <h1>🎨 Конструктор Mini App-визитки</h1>
+      <h1>🎨 Конструктор ЧБ/Хром Mini App</h1>
       <p class="lead">
-        Меняйте текст, обложку, форму и покрытие кнопок (хромовое переливание, фото под стеклом или угловую звёздочку).
-        Все изменения сразу видны в телефоне справа. Когда всё готово — скопируйте или скачайте <code>config.json</code> и замените файл <code>docs/config.json</code> на GitHub.
+        Мгновенный Mini App полностью на коде (без тяжёлых фото): жидкий хром, ЧБ-палитра, акценты площадок, водяная волна и угловая звёздочка.
+        После настройки скопируйте <code>config.json</code> и вставьте его в <code>docs/config.json</code> на GitHub.
       </p>
 
       <div class="grid-2">
@@ -160,8 +154,8 @@
           <input id="brandTitle" type="text" />
         </label>
         <label>
-          Картинка-обложка (URL или ./assets/cover.jpg)
-          <input id="coverImage" type="text" />
+          Бейдж на хром-шапке
+          <input id="coverBadge" type="text" placeholder="OFFICIAL HUB" />
         </label>
       </div>
 
@@ -172,18 +166,33 @@
 
       <div class="grid-2">
         <label>
+          Верхняя шапка
+          <select id="coverMode">
+            <option value="chrome-code">⚡ Хром-волны из кода (мгновенно)</option>
+            <option value="image">🖼 Своя картинка по URL</option>
+            <option value="none">Без шапки</option>
+          </select>
+        </label>
+        <label>
+          URL картинки (если выбран режим «Своя картинка»)
+          <input id="coverImage" type="text" placeholder="https://..." />
+        </label>
+      </div>
+
+      <div class="grid-2">
+        <label>
           Фон Mini App
           <select id="bgMode">
-            <option value="telegram-blue">Фирменный синий Telegram</option>
-            <option value="telegram-dark">Тёмный неон</option>
-            <option value="telegram-theme">Авто-тема пользователя</option>
+            <option value="monochrome-chrome">🖤 ЧБ Хром / Обсидиан</option>
+            <option value="telegram-blue">💙 Синий Telegram</option>
+            <option value="telegram-theme">🎨 Тема пользователя</option>
           </select>
         </label>
         <label>
           Стиль карточки
           <select id="cardTone">
-            <option value="light">Белая карточка</option>
-            <option value="dark">Тёмная карточка</option>
+            <option value="dark">Тёмный хром</option>
+            <option value="light">Светлая карточка</option>
           </select>
         </label>
       </div>
@@ -211,12 +220,28 @@
   <script>
     const STORAGE_KEY = "tg_miniapp_preview_config_v1";
     const VARIANTS = [
-      ["chrome-iridescent", "✨ Переливающийся хром"],
+      ["chrome-mono", "🖤 Тёмный ЧБ-хром"],
+      ["chrome-silver", "🪞 Зеркальный серебряный хром"],
+      ["chrome-iridescent", "✨ Радужный перелив"],
       ["chrome-red", "🔴 Красный хром"],
       ["chrome-blue", "🔵 Синий хром"],
       ["chrome-green", "🟢 Зелёный хром"],
       ["chrome-orange", "🟠 Оранжевый хром"],
       ["photo-glass", "🖼 Фото + стекло"]
+    ];
+    const ACCENTS = [
+      ["youtube", "🔴 YouTube (#FF1E42)"],
+      ["twitch", "🟣 Twitch (#A855F7)"],
+      ["telegram", "🔵 Telegram (#38BDF8)"],
+      ["emerald", "🟢 Предложка (#22C55E)"],
+      ["silver", "⚪ ЧБ Серебро"]
+    ];
+    const ICONS = [
+      ["youtube", "Лого YouTube"],
+      ["twitch", "Лого Twitch"],
+      ["telegram", "Лого Telegram"],
+      ["suggest", "Иконка диалога"],
+      ["link", "Иконка ссылки"]
     ];
     const SHAPES = [
       ["pill", "Обычная кнопка (капсула)"],
@@ -239,12 +264,20 @@
       }
     }
 
+    function optionsHtml(list, selected) {
+      return list.map(([val, lbl]) =>
+        `<option value="${val}" ${selected === val ? "selected" : ""}>${lbl}</option>`
+      ).join("");
+    }
+
     function renderEditor() {
       document.getElementById("brandTitle").value = state.brandTitle || "";
+      document.getElementById("coverBadge").value = state.coverBadge || "";
       document.getElementById("subtitle").value = state.subtitle || "";
+      document.getElementById("coverMode").value = state.coverMode || "chrome-code";
       document.getElementById("coverImage").value = state.coverImage || "";
-      document.getElementById("bgMode").value = state.theme?.bgMode || "telegram-blue";
-      document.getElementById("cardTone").value = state.theme?.cardTone || "light";
+      document.getElementById("bgMode").value = state.theme?.bgMode || "monochrome-chrome";
+      document.getElementById("cardTone").value = state.theme?.cardTone || "dark";
 
       const container = document.getElementById("buttonsEditor");
       container.innerHTML = "";
@@ -252,13 +285,6 @@
       state.buttons.forEach((btn, idx) => {
         const card = document.createElement("div");
         card.className = "btn-card";
-
-        const variantOpts = VARIANTS.map(([val, lbl]) =>
-          `<option value="${val}" ${btn.variant === val ? "selected" : ""}>${lbl}</option>`
-        ).join("");
-        const shapeOpts = SHAPES.map(([val, lbl]) =>
-          `<option value="${val}" ${btn.shape === val ? "selected" : ""}>${lbl}</option>`
-        ).join("");
 
         card.innerHTML = `
           <div class="btn-card-head">
@@ -271,23 +297,25 @@
           </div>
           <div class="grid-2">
             <label>Текст кнопки <input data-field="title" value="${(btn.title || "").replace(/"/g, "&quot;")}" /></label>
-            <label>Иконка (эмодзи) <input data-field="icon" value="${(btn.icon || "").replace(/"/g, "&quot;")}" /></label>
+            <label>Иконка <select data-field="icon">${optionsHtml(ICONS, btn.icon || "link")}</select></label>
           </div>
           <div class="grid-2">
             <label>Подпись <input data-field="subtitle" value="${(btn.subtitle || "").replace(/"/g, "&quot;")}" /></label>
             <label>Ссылка (URL) <input data-field="url" value="${(btn.url || "").replace(/"/g, "&quot;")}" /></label>
           </div>
           <div class="grid-2">
-            <label>Покрытие / стиль <select data-field="variant">${variantOpts}</select></label>
-            <label>Форма <select data-field="shape">${shapeOpts}</select></label>
+            <label>Хром-покрытие <select data-field="variant">${optionsHtml(VARIANTS, btn.variant || "chrome-mono")}</select></label>
+            <label>Цвет акцента площадки <select data-field="accent">${optionsHtml(ACCENTS, btn.accent || "silver")}</select></label>
           </div>
-          <label>Фото на фон (для стиля «Фото + стекло», URL)
-            <input data-field="bgImage" placeholder="https://... или ./assets/cover.jpg" value="${(btn.bgImage || "").replace(/"/g, "&quot;")}" />
-          </label>
+          <div class="grid-2">
+            <label>Форма <select data-field="shape">${optionsHtml(SHAPES, btn.shape || "pill")}</select></label>
+            <label>Фото на фон (для «Фото + стекло») <input data-field="bgImage" placeholder="https://..." value="${(btn.bgImage || "").replace(/"/g, "&quot;")}" /></label>
+          </div>
         `;
 
         card.querySelectorAll("[data-field]").forEach((input) => {
-          input.addEventListener("input", () => {
+          const evName = input.tagName === "SELECT" ? "change" : "input";
+          input.addEventListener(evName, () => {
             btn[input.dataset.field] = input.value;
             if (input.dataset.field === "title") {
               card.querySelector(".btn-card-title").textContent = `#${idx + 1} ${btn.title || "Кнопка"}`;
@@ -323,11 +351,16 @@
       renderEditor();
       syncPreview();
 
-      ["brandTitle", "subtitle", "coverImage"].forEach((id) => {
+      ["brandTitle", "coverBadge", "subtitle", "coverImage"].forEach((id) => {
         document.getElementById(id).addEventListener("input", (e) => {
           state[id] = e.target.value;
           syncPreview();
         });
+      });
+
+      document.getElementById("coverMode").addEventListener("change", (e) => {
+        state.coverMode = e.target.value;
+        syncPreview();
       });
 
       ["bgMode", "cardTone"].forEach((id) => {
@@ -341,11 +374,12 @@
       document.getElementById("addBtn").addEventListener("click", () => {
         state.buttons.push({
           id: "btn_" + Date.now().toString(36),
-          title: "Новая кнопка",
-          subtitle: "Описание ссылки",
+          title: "Новая ссылка",
+          subtitle: "Описание",
           url: "https://t.me/",
-          icon: "✨",
-          variant: "chrome-iridescent",
+          icon: "link",
+          variant: "chrome-mono",
+          accent: "silver",
           shape: "pill",
           bgImage: ""
         });

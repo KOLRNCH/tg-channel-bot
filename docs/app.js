@@ -1,13 +1,21 @@
 /**
  * Telegram Mini App controller:
- * - Loads channel card & styled buttons from ./config.json (or live preview override)
- * - Generates crisp 24-point starburst clip-path for sticker-shaped buttons
- * - Drives interactive chrome pointer reflections + water-drop concentric ripples
+ * - Zero-image procedural chrome header & crisp inline SVG platform icons
+ * - Monochrome chrome buttons with platform accent glow + water-drop concentric ripples
+ * - Loads config from ./config.json (or live preview override from editor.html)
  */
 
 const STORAGE_PREVIEW_KEY = "tg_miniapp_preview_config_v1";
 
-function buildStarburstPolygon(points = 24, outerRadius = 50, innerRadius = 40.5) {
+const SVG_ICONS = {
+  youtube: `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.6 7.2a2.9 2.9 0 0 0-2-2C17.8 4.7 12 4.7 12 4.7s-5.8 0-7.6.5a2.9 2.9 0 0 0-2 2A30 30 0 0 0 2 12a30 30 0 0 0 .4 4.8 2.9 2.9 0 0 0 2 2c1.8.5 7.6.5 7.6.5s5.8 0 7.6-.5a2.9 2.9 0 0 0 2-2A30 30 0 0 0 22 12a30 30 0 0 0-.4-4.8ZM10 15.2V8.8L15.6 12 10 15.2Z"/></svg>`,
+  twitch: `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M4.3 3 3 6.3v12.8h4.7V22h2.7l2.9-2.9h4.1L21 15.5V3H4.3Zm14.9 11.6-2.9 2.9h-4.7l-2.6 2.6v-2.6H5.2V4.8h14v9.8ZM15.5 8h-1.8v5h1.8V8Zm-4.8 0H8.9v5h1.8V8Z"/></svg>`,
+  telegram: `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.5 4.3 2.9 11.5c-1.3.5-1.3 1.3-.2 1.6l4.7 1.5 11-6.9c.5-.3 1-.1.6.2l-8.9 8-.3 4.9c.5 0 .7-.2 1-.5l2.3-2.2 4.8 3.5c.9.5 1.5.2 1.7-.8L22.6 5.6c.3-1.2-.5-1.8-1.1-1.3Z"/></svg>`,
+  suggest: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 10h8"/><path d="M8 14h4"/></svg>`,
+  link: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>`
+};
+
+function buildStarburstPolygon(points = 24, outerRadius = 50, innerRadius = 41) {
   const coords = [];
   const total = points * 2;
   for (let i = 0; i < total; i++) {
@@ -28,20 +36,18 @@ function getTelegramWebApp() {
 
 function applyTheme(theme = {}) {
   const body = document.body;
-  body.classList.remove("bg-telegram-blue", "bg-telegram-dark", "bg-telegram-theme", "card-dark");
+  body.classList.remove("bg-monochrome-chrome", "bg-telegram-blue", "bg-telegram-theme", "card-dark", "card-light");
 
-  const bgMode = theme.bgMode || "telegram-blue";
-  if (bgMode === "telegram-dark") {
-    body.classList.add("bg-telegram-dark");
+  const bgMode = theme.bgMode || "monochrome-chrome";
+  if (bgMode === "telegram-blue") {
+    body.classList.add("bg-telegram-blue");
   } else if (bgMode === "telegram-theme") {
     body.classList.add("bg-telegram-theme");
   } else {
-    body.classList.add("bg-telegram-blue");
+    body.classList.add("bg-monochrome-chrome");
   }
 
-  if (theme.cardTone === "dark") {
-    body.classList.add("card-dark");
-  }
+  body.classList.add(theme.cardTone === "light" ? "card-light" : "card-dark");
 }
 
 function spawnWaterDrop(buttonEl, clientX, clientY) {
@@ -86,20 +92,38 @@ function openTargetUrl(url) {
   window.open(url, "_blank", "noopener,noreferrer");
 }
 
+function renderButtonIcon(iconEl, iconValue) {
+  const key = (iconValue || "").trim().toLowerCase();
+  if (SVG_ICONS[key]) {
+    iconEl.innerHTML = SVG_ICONS[key];
+    return;
+  }
+  if (iconValue) {
+    iconEl.textContent = iconValue;
+    return;
+  }
+  iconEl.innerHTML = SVG_ICONS.link;
+}
+
 function createStyledButton(btnConfig, fallbackCover) {
   const shape = btnConfig.shape === "starburst" ? "starburst" : "pill";
-  const variant = btnConfig.variant || "chrome-iridescent";
+  const variant = btnConfig.variant || "chrome-mono";
+  const accent = btnConfig.accent || "silver";
 
   const btn = document.createElement("button");
   btn.type = "button";
-  btn.className = `fx-btn fx-btn--${variant}` + (shape === "starburst" ? " fx-btn--starburst" : "");
+  btn.className =
+    `fx-btn fx-btn--${variant} fx-btn--accent-${accent}` +
+    (shape === "starburst" ? " fx-btn--starburst" : "");
   btn.setAttribute("aria-label", btnConfig.title || "Кнопка");
 
   const bg = document.createElement("span");
   bg.className = "fx-btn__bg";
   if (variant === "photo-glass") {
-    const imgUrl = btnConfig.bgImage || fallbackCover || "./assets/cover.jpg";
-    bg.style.backgroundImage = `url("${imgUrl.replace(/"/g, '\\"')}")`;
+    const imgUrl = btnConfig.bgImage || fallbackCover || "";
+    if (imgUrl) {
+      bg.style.backgroundImage = `url("${imgUrl.replace(/"/g, '\\"')}")`;
+    }
   }
   btn.appendChild(bg);
 
@@ -109,10 +133,10 @@ function createStyledButton(btnConfig, fallbackCover) {
     btn.appendChild(glass);
   }
 
-  if (btnConfig.icon) {
+  if (btnConfig.icon !== "none") {
     const icon = document.createElement("span");
     icon.className = "fx-btn__icon";
-    icon.textContent = btnConfig.icon;
+    renderButtonIcon(icon, btnConfig.icon);
     btn.appendChild(icon);
   }
 
@@ -170,7 +194,6 @@ function createStyledButton(btnConfig, fallbackCover) {
   btn.addEventListener("pointercancel", release);
 
   btn.addEventListener("click", () => {
-    // Handle keyboard Enter/Space activation cleanly
     if (Date.now() - lastPointerDownAt > 500) {
       spawnWaterDrop(btn);
     }
@@ -192,17 +215,30 @@ function renderApp(config) {
   applyTheme(config.theme);
 
   const coverBox = document.getElementById("coverBox");
+  const chromeHero = document.getElementById("chromeHero");
   const coverImg = document.getElementById("coverImg");
-  if (config.coverImage) {
+  const coverBadge = document.getElementById("coverBadge");
+
+  const mode = config.coverMode || (config.coverImage ? "image" : "chrome-code");
+  if (mode === "none") {
+    coverBox.hidden = true;
+  } else if (mode === "image" && config.coverImage) {
     coverBox.hidden = false;
+    chromeHero.hidden = true;
+    coverImg.hidden = false;
     coverImg.src = config.coverImage;
   } else {
-    coverBox.hidden = true;
+    coverBox.hidden = false;
+    chromeHero.hidden = false;
+    coverImg.hidden = true;
+    coverBadge.hidden = !config.coverBadge;
+    coverBadge.textContent = config.coverBadge || "";
   }
 
   document.getElementById("brandTitle").textContent = config.brandTitle || "Добро пожаловать!";
   document.getElementById("brandSubtitle").textContent = config.subtitle || "";
 
+  const wrapper = document.getElementById("cardWrapper");
   const stack = document.getElementById("buttonsStack");
   const dock = document.getElementById("starburstDock");
   stack.innerHTML = "";
@@ -224,7 +260,9 @@ function renderApp(config) {
     }
   });
 
-  dock.hidden = dock.children.length === 0;
+  const hasStarburst = dock.children.length > 0;
+  dock.hidden = !hasStarburst;
+  wrapper.classList.toggle("has-starburst", hasStarburst);
 }
 
 async function loadInitialConfig() {
