@@ -6,6 +6,7 @@
  */
 
 const STORAGE_PREVIEW_KEY = "tg_miniapp_preview_config_v1";
+const STORAGE_CACHE_KEY = "tg_miniapp_cached_config_v1";
 
 const SVG_ICONS = {
   youtube: `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.6 7.2a2.9 2.9 0 0 0-2-2C17.8 4.7 12 4.7 12 4.7s-5.8 0-7.6.5a2.9 2.9 0 0 0-2 2A30 30 0 0 0 2 12a30 30 0 0 0 .4 4.8 2.9 2.9 0 0 0 2 2c1.8.5 7.6.5 7.6.5s5.8 0 7.6-.5a2.9 2.9 0 0 0 2-2A30 30 0 0 0 22 12a30 30 0 0 0-.4-4.8ZM10 15.2V8.8L15.6 12 10 15.2Z"/></svg>`,
@@ -522,23 +523,46 @@ function renderApp(config) {
   wrapper.classList.toggle("has-starburst", hasStarburst);
 }
 
-async function loadInitialConfig() {
+function getInstantConfig() {
   const params = new URLSearchParams(window.location.search);
-
   if (params.get("preview") === "1") {
     const saved = localStorage.getItem(STORAGE_PREVIEW_KEY);
     if (saved) {
       try {
-        return JSON.parse(saved);
+        return { config: JSON.parse(saved), isPreview: true };
       } catch (_) {}
     }
   }
 
-  const resp = await fetch(`./config.json?v=${Date.now()}`);
+  try {
+    const cached = localStorage.getItem(STORAGE_CACHE_KEY);
+    if (cached) {
+      return { config: JSON.parse(cached), isPreview: false };
+    }
+  } catch (_) {}
+
+  const embeddedEl = document.getElementById("initialConfig");
+  if (embeddedEl && embeddedEl.textContent) {
+    try {
+      return { config: JSON.parse(embeddedEl.textContent), isPreview: false };
+    } catch (_) {}
+  }
+
+  return { config: null, isPreview: false };
+}
+
+async function fetchFreshConfig() {
+  const resp = await fetch("./config.json", { cache: "no-cache" });
   if (!resp.ok) {
     throw new Error(`Failed to load config.json: ${resp.status}`);
   }
   return resp.json();
+}
+
+const earlyTg = getTelegramWebApp();
+if (earlyTg) {
+  earlyTg.ready();
+  earlyTg.expand();
 }
 
 window.addEventListener("DOMContentLoaded", async () => {
@@ -554,12 +578,29 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
+  const { config: instantConfig, isPreview } = getInstantConfig();
+  let renderedJson = "";
+  if (instantConfig) {
+    renderedJson = JSON.stringify(instantConfig);
+    renderApp(instantConfig);
+  }
+
+  if (isPreview) return;
+
   try {
-    const config = await loadInitialConfig();
-    renderApp(config);
+    const freshConfig = await fetchFreshConfig();
+    const freshJson = JSON.stringify(freshConfig);
+    try {
+      localStorage.setItem(STORAGE_CACHE_KEY, freshJson);
+    } catch (_) {}
+    if (freshJson !== renderedJson) {
+      renderApp(freshConfig);
+    }
   } catch (err) {
     console.error(err);
-    document.getElementById("brandSubtitle").textContent =
-      "Не удалось загрузить config.json. Проверьте файл конфигурации.";
+    if (!instantConfig) {
+      document.getElementById("brandSubtitle").textContent =
+        "Не удалось загрузить config.json. Проверьте файл конфигурации.";
+    }
   }
 });

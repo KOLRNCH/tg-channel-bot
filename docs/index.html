@@ -6,9 +6,11 @@
   <title>Меню канала</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Tektur:wght@600;700;800;900&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Tektur:wght@600;700;800;900&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Tektur:wght@600;700;800;900&display=swap" rel="stylesheet" /></noscript>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <link rel="stylesheet" href="./styles.css?v=20261125" />
+  <link rel="stylesheet" href="./styles.css?v=20261126" />
+  <link rel="preload" as="script" href="./app.js?v=20261126" />
 </head>
 <body class="bg-cyber-void card-dark">
   <div class="ambient-bg" aria-hidden="true">
@@ -72,6 +74,7 @@
     </section>
   </main>
 
-  <script src="./app.js?v=20261125"></script>
+  <script id="initialConfig" type="application/json">{"brandTitle":"Добро пожаловать!","subtitle":"Стримы, свежие видео, чат комьюнити и личная предложка — всё в одном цифровом хабе.","coverMode":"dither-star","coverBadge":"HUB // ONLINE","coverImage":"","theme":{"bgMode":"cyber-void","cardTone":"dark"},"buttons":[{"id":"suggest","title":"ПРЕДЛОЖКА","subtitle":"","url":"https://t.me/kainepc?direct","icon":"suggest","variant":"chrome-silver","accent":"emerald","shape":"starburst","bgImage":""},{"id":"tg_chat","title":"Чат в ТГ","subtitle":"Комьюнити и обсуждения","url":"https://t.me/chatkainepc","icon":"telegram","variant":"chrome-silver","accent":"telegram","shape":"pill","bgImage":""},{"id":"twitch","title":"Twitch","subtitle":"Прямые эфиры и общение","url":"https://www.twitch.tv/k0lrn","icon":"twitch","variant":"chrome-blue","accent":"twitch","shape":"pill","bgImage":""},{"id":"youtube","title":"YouTube","subtitle":"Видео, нарезки и остальное","url":"https://www.youtube.com/@KAINEPC","icon":"youtube","variant":"chrome-red","accent":"youtube","shape":"pill","bgImage":""}]}</script>
+  <script src="./app.js?v=20261126"></script>
 </body>
 </html>
