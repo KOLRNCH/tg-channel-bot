@@ -89,10 +89,6 @@ def build_admin_main_kb(config: PostConfig) -> InlineKeyboardMarkup:
                 text=f"🔘 Кнопки и стили ({len(config.buttons)})",
                 callback_data="adm:buttons",
             ),
-            InlineKeyboardButton(
-                text="📩 Текст предложки",
-                callback_data="adm:edit_feedback_text",
-            ),
         ],
         [
             InlineKeyboardButton(

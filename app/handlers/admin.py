@@ -81,19 +81,13 @@ def create_admin_router(
             if config.published_message_id
             else "Ещё не опубликован"
         )
-        feedback_mode = (
-            f"Отдельные темы в группе <code>{settings.feedback_group_id}</code>"
-            if settings.feedback_group_id
-            else "ЛС админу (через Reply; для отдельных веток укажите FEEDBACK_GROUP_ID)"
-        )
         photo_state = "Да" if (config.photo_file_id or config.photo_path) else "Нет"
         return (
             "⚙️ <b>Панель управления каналом</b>\n\n"
             f"📢 <b>Канал:</b> <code>{html.escape(str(settings.channel_id))}</code>\n"
             f"📌 <b>Закреплённый пост:</b> {status}\n"
             f"🖼 <b>Обложка:</b> {photo_state}\n"
-            f"🔘 <b>Кнопок:</b> {len(config.buttons)}\n"
-            f"📩 <b>Предложка:</b> {feedback_mode}"
+            f"🔘 <b>Кнопок:</b> {len(config.buttons)}"
         )
 
     def _button_details_text(btn: ButtonConfig) -> str:

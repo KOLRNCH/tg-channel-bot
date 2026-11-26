@@ -8,7 +8,6 @@ import logging
 from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
 
-from app.db import Database
 from app.handlers.admin import create_admin_router
 from app.handlers.feedback import create_feedback_router
 from app.miniapp_config import MiniAppConfigStore
@@ -27,21 +26,17 @@ async def run_bot() -> None:
     store.load()
     miniapp_store = MiniAppConfigStore(settings.miniapp_config_path)
 
-    db = Database(settings.db_path)
-    await db.connect()
-
     bot = Bot(token=settings.bot_token)
     dp = Dispatcher(storage=MemoryStorage())
     dp.include_router(create_admin_router(settings, store, miniapp_store))
-    dp.include_router(create_feedback_router(settings, store, db))
+    dp.include_router(create_feedback_router(settings, store))
 
     me = await bot.get_me()
     logging.info("Бот запущен: @%s (admin IDs: %s)", me.username, settings.admin_ids)
 
     try:
-        await dp.start_polling(bot)
+        await dp.start_polling(bot, drop_pending_updates=True)
     finally:
-        await db.close()
         await bot.session.close()
 
 

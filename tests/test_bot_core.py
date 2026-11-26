@@ -10,7 +10,7 @@ import pytest
 from aiogram.types import User
 
 from app.db import Database
-from app.handlers.feedback import format_topic_title, format_user_card
+from app.handlers.feedback import build_open_menu_kb, resolve_miniapp_menu_url
 from app.keyboards import (
     build_channel_keyboard,
     build_miniapp_menu_kb,
@@ -119,7 +119,10 @@ def test_miniapp_config_json_valid() -> None:
     assert data["coverMode"] == "dither-star"
     assert len(data["buttons"]) == 4
     assert any(btn["shape"] == "starburst" for btn in data["buttons"])
-    assert all(btn["variant"] in {"cyber-dither", "chrome-silver"} for btn in data["buttons"])
+    assert all(
+        btn["variant"] in {"cyber-dither", "chrome-silver", "chrome-blue", "chrome-red", "photo-glass"}
+        for btn in data["buttons"]
+    )
     assert all(is_valid_button_url(btn["url"]) for btn in data["buttons"])
 
 
@@ -201,10 +204,22 @@ async def test_publisher_send_pin_and_update() -> None:
         await update_published_post(bot, cfg, "demo_bot")
 
 
-def test_feedback_topic_formatting() -> None:
-    user = User(id=555, is_bot=False, first_name="Макс", last_name="<Stream>", username="max_tv")
-    assert format_topic_title(user) == "Макс <Stream> (@max_tv) • 555"
-    card = format_user_card(user)
-    assert "&lt;Stream&gt;" in card
-    assert "@max_tv" in card
-    assert "<code>555</code>" in card
+def test_feedback_redirects_to_miniapp_menu() -> None:
+    cfg = PostConfig(
+        buttons=[
+            ButtonConfig(
+                id="miniapp_menu",
+                text="Меню",
+                url="https://t.me/{bot_username}/menu",
+                row=1,
+                style="primary",
+            )
+        ]
+    )
+    url = resolve_miniapp_menu_url(cfg, "my_channel_hubbot")
+    assert url == "https://t.me/my_channel_hubbot/menu"
+
+    kb = build_open_menu_kb(url)
+    assert len(kb.inline_keyboard) == 1
+    assert len(kb.inline_keyboard[0]) == 1
+    assert kb.inline_keyboard[0][0].url == "https://t.me/my_channel_hubbot/menu"
